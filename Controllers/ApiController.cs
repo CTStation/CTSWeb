@@ -4,13 +4,13 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 
-namespace WebApplication2.Controllers
+namespace CTSWeb.Controllers
 {
-    public class HomeController : Controller
+    public class ApiController : Controller
     {
-        public ActionResult Index()
+        public ActionResult Help()
         {
-            return View();
+            return Json( Models.Help.Commands(), JsonRequestBehavior.AllowGet);
         }
 
         public ActionResult About()
@@ -27,9 +27,5 @@ namespace WebApplication2.Controllers
             return View();
         }
 
-        public ActionResult Api()
-        {
-            return Json(new Models.Class1(), JsonRequestBehavior.AllowGet);
-        }
     }
 }
