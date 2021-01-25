@@ -30,21 +30,14 @@ namespace CTSWeb.Models
             if (!_bIsInit)
             {
                 _bIsInit = true;
-                S_Init();
+                SortedDictionary<string, SortedDictionary<string, string>> oList = new SortedDictionary<string, SortedDictionary<string, string>>();
+
+                S_AddCommand(oList, "Reportings", "GET", "Returns the list of reportings");
+                S_AddCommand(oList, "Reportings/ID", "POST", "Creates or updates 1 or many reportings");
+                S_AddCommand(oList, "Reportings/ID", "GET", "Returns the content of 1 reporting");
+
+                _aoCommands = S_Sort(oList);
             }
-        }
-
-
-        private static void S_Init()
-        {
-
-            _bIsInit = true;
-            SortedDictionary<string, SortedDictionary<string, string>> oList = new SortedDictionary<string, SortedDictionary<string, string>>();
-
-            S_AddCommand(oList, "Reportings", "GET", "Returns the list of reportings");
-            S_AddCommand(oList, "Reportings/ID", "POST", "Creates or updates 1 or many reportings");
-            S_AddCommand(oList, "Reportings/ID", "GET", "Returns the content of 1 reporting");
-            _aoCommands = S_Sort(oList);
         }
 
 

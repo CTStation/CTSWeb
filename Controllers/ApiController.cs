@@ -13,18 +13,13 @@ namespace CTSWeb.Controllers
             return Json( Models.Help.Commands(), JsonRequestBehavior.AllowGet);
         }
 
-        public ActionResult About()
+        public ActionResult Reportings()
         {
-            ViewBag.Message = "Your application description page.";
+            JsonResult oRet;
 
-            return View();
-        }
+            oRet = new JsonResult();
 
-        public ActionResult Contact()
-        {
-            ViewBag.Message = "Your contact page.";
-
-            return View();
+            return Json(Models.Help.Commands(), JsonRequestBehavior.AllowGet);
         }
 
     }
