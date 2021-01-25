@@ -77,7 +77,8 @@ namespace CTSWeb.Models
             public static bool operator !=(S_ConnectionInfo ro1, S_ConnectionInfo ro2) { return !ro1.Equals(ro2); }
         }
 
-        private static TimedCache<S_ConnectionInfo, ConfigClass> S_oCache = new TimedCache<S_ConnectionInfo, ConfigClass>(ConfigClass.Close);
+        private static TimedCache<S_ConnectionInfo, ConfigClass> S_oCache = 
+                new TimedCache<S_ConnectionInfo, ConfigClass>(ConfigClass.Close);   // Closes unused connections after 5 minutes
 
         private S_ConnectionInfo _oInfo;
         private ConfigClass _oConfig;
