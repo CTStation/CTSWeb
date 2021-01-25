@@ -1,37 +1,28 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using ApcomFrameworkConnectionLib;
 using CTCLIENTSERVERLib;
-using CTCLIENTSERVERPRIVATELib;
-using Newtonsoft.Json;
 using log4net;
 using System.Xml;
-using System.Security.Cryptography;
-using System.Configuration;
-using System.Reflection;
-using System.IO;
 
-namespace CTSREPOLIB
+namespace CTSWeb.Models
 {
     public class ConfigClass
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         private string _brokerName;
         private string _datasourceName;
         private string _datasourcePassword;
         private string _userName;
         private string _password;
         private string _filePath;
-        public string _currentDirectory = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().GetName().CodeBase);
+
+        private ICtSession _session2;
+
         public string FilePath
         {
             get { return _filePath; }
             set { _filePath = value; }
         }
-
 
         public string BrokerName
         {
@@ -45,12 +36,12 @@ namespace CTSREPOLIB
             set { _datasourceName = value; }
         }
 
-
         public string DatasourcePassword
         {
             get { return _datasourcePassword; }
             set { _datasourcePassword = value; }
         }
+
         public string UserName
         {
             get { return _userName; }
@@ -65,12 +56,11 @@ namespace CTSREPOLIB
 
         public ICtSession Session
         {
-            get { return session2; }
+            get { return _session2; }
         }
 
 
-
-        private ICtSession session2;
+        
         public ConfigClass(string BrokerName, string DatasourceName, string DatasourcePassword, string UserName, string Password, string FilePath)
         {
             _brokerName = BrokerName;
@@ -123,7 +113,7 @@ namespace CTSREPOLIB
                         }
                     }
                 }
-                throw new KeyNotFoundException("Unable to find datasource " + this._datasourceName);
+                throw new System.Collections.Generic.KeyNotFoundException("Unable to find datasource " + this._datasourceName);
 
 
             }
@@ -143,104 +133,32 @@ namespace CTSREPOLIB
 
 
         }
-        public bool TestConnection()
+        
+        public bool IsActive(string rsBrokerName = "", string rsDatasourceName = "", string rsUserName = "", string rsPassword = "")
         {
-
-            CTCLIENTSERVERLib.ICtSessionCtx sessionContext = null;
-            ICtSessionClient sessionClient = null;
-            if (this.session2 != null)
-            {
-                if (this.session2.IsLogged)
-                {
-                    sessionClient = (ICtSessionClient)this.session2;
-                    sessionContext = (CTCLIENTSERVERLib.ICtSessionCtx)sessionClient;
-
-                    sessionContext.SetSessionCtx();
-
-                    sessionContext = null;
-                    return false;
-                }
-
-            }
-
-            CtApplicationClientClass cacc = null;
-            try
-            {
-                cacc = new CtApplicationClientClass();
-                cacc.ConnectToServer(this._brokerName, this._datasourceName, new string[] { });
-                this.session2 = cacc.Logon(_userName, _password);
-                cacc.Initialize(this.session2);
-                sessionClient = (ICtSessionClient)this.session2;
-
-            }
-            catch (Exception)
-            {
-                try
-                {
-                    //un bug de l'API. On retrouve le même type de traitement que dans une classe d'un custom de SAP pour une version précédente.
-                    cacc = new CtApplicationClientClass();
-                    cacc.ConnectToServer(this._brokerName, this._datasourceName, new string[] { });
-                    this.session2 = cacc.Logon(_userName, _password);
-                    cacc.Initialize(this.session2);
-                    sessionClient = (ICtSessionClient)this.session2;
-
-
-                }
-                catch (Exception ex1)
-                {
-                    //  Console.WriteLine(ex1.Message);
-                    throw new Exception("Cannot initialize BFC connection" + ex1.Message);
-                }
-            }
-            try
-            {
-                CTCLIENTSERVERLib.ICtApplicationInfo inf = (CTCLIENTSERVERLib.ICtApplicationInfo)sessionClient.Application;
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(inf);
-                sessionContext = (CTCLIENTSERVERLib.ICtSessionCtx)sessionClient;
-
-                sessionContext.SetSessionCtx();
-
-                sessionContext = null;
-                cacc.Uninitialize(true);
-
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Cannot set session context:" + ex.Message);
-            }
-            if (!session2.IsLogged) throw new Exception("Cannot sign in into the data source : " + this._datasourceName);
-            return true;
+            bool bRet = false;
+            if (!(_session2 is null)) { bRet = _session2.IsLogged; }
+            if (bRet) bRet = rsBrokerName is null || rsBrokerName == _brokerName;
+            if (bRet) bRet = rsDatasourceName is null || rsDatasourceName == _datasourceName;
+            if (bRet) bRet = rsUserName is null || rsUserName == _userName;
+            if (bRet) bRet = rsPassword is null || rsPassword == _password;
+            return bRet;
         }
 
 
-        public bool Connect()
+        public void Connect()
         {
-
             CTCLIENTSERVERLib.ICtSessionCtx sessionContext = null;
             ICtSessionClient sessionClient = null;
-            if (this.session2 != null)
-            {
-                if (this.session2.IsLogged)
-                {
-                    sessionClient = (ICtSessionClient)this.session2;
-                    sessionContext = (CTCLIENTSERVERLib.ICtSessionCtx)sessionClient;
-
-                    sessionContext.SetSessionCtx();
-
-                    sessionContext = null;
-                    return false;
-                }
-
-            }
-
             CtApplicationClientClass cacc = null;
+
             try
             {
                 cacc = new CtApplicationClientClass();
                 cacc.ConnectToServer(this._brokerName, this._datasourceName, new string[] { });
-                this.session2 = cacc.Logon(_userName, _password);
-                cacc.Initialize(this.session2);
-                sessionClient = (ICtSessionClient)this.session2;
+                _session2 = cacc.Logon(_userName, _password);
+                cacc.Initialize(_session2);
+                sessionClient = (ICtSessionClient)_session2;
 
             }
             catch (Exception)
@@ -250,9 +168,9 @@ namespace CTSREPOLIB
                     //un bug de l'API. On retrouve le même type de traitement que dans une classe d'un custom de SAP pour une version précédente.
                     cacc = new CtApplicationClientClass();
                     cacc.ConnectToServer(this._brokerName, this._datasourceName, new string[] { });
-                    this.session2 = cacc.Logon(_userName, _password);
-                    cacc.Initialize(this.session2);
-                    sessionClient = (ICtSessionClient)this.session2;
+                    _session2 = cacc.Logon(_userName, _password);
+                    cacc.Initialize(_session2);
+                    sessionClient = (ICtSessionClient)_session2;
 
 
                 }
@@ -262,6 +180,7 @@ namespace CTSREPOLIB
                     throw new Exception("Cannot initialize BFC connection" + ex1.Message);
                 }
             }
+
             try
             {
                 CTCLIENTSERVERLib.ICtApplicationInfo inf = (CTCLIENTSERVERLib.ICtApplicationInfo)sessionClient.Application;
@@ -278,28 +197,33 @@ namespace CTSREPOLIB
             {
                 throw new Exception("Cannot set session context:" + ex.Message);
             }
-            if (!session2.IsLogged) throw new Exception("Cannot sign in into the data source : " + this._datasourceName);
-            return true;
+            if (!_session2.IsLogged) throw new Exception("Cannot sign in into the data source : " + this._datasourceName);
         }
+
         public void Disconnect()
         {
+            Close(this);
+        }
+
+        public static void Close(ConfigClass roCon) 
+        { 
             try
             {
-                if (this.session2 != null)
+                if (roCon._session2 != null)
                 {
-                    if (session2.IsLogged)
+                    if (roCon._session2.IsLogged)
                     {
                         /* realease context */
-                        session2.Logout();
+                        roCon._session2.Logout();
                     }
-                    CTCLIENTSERVERLib.ICtSessionCtx sessionContext = (CTCLIENTSERVERLib.ICtSessionCtx)session2;
-                    sessionContext.ReleaseSessionCtx(this.session2);
+                    CTCLIENTSERVERLib.ICtSessionCtx sessionContext = (CTCLIENTSERVERLib.ICtSessionCtx)roCon._session2;
+                    sessionContext.ReleaseSessionCtx(roCon._session2);
                     sessionContext = null;
                     /* dé-initialisation de l'appli */
                     // this.cacc3.Uninitialize(true);
                     //this.cacc3 = null;
-                    System.Runtime.InteropServices.Marshal.ReleaseComObject(this.session2);
-                    session2 = null;
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(roCon._session2);
+                    roCon._session2 = null;
                     GC.Collect();
                     GC.WaitForPendingFinalizers();
                 }
@@ -307,94 +231,7 @@ namespace CTSREPOLIB
             catch (Exception ex)
             {
                 log.Warn(ex.Message);
-
             }
-
-        }
-        public bool SaveConfig()
-        {
-            log.Debug("Saving configuration file");
-            try
-            {
-
-                System.IO.File.WriteAllText(AssemblyDirectory + "\\config", Encrypt(JsonConvert.SerializeObject(this), "4815162342"));
-
-
-                //ConfigurationManager.AppSettings.Add("ConnectionString", Encrypt(JsonConvert.SerializeObject(this), "4815162342"));
-            }
-            catch (Exception ex)
-            {
-                log.Error(ex.Message);
-                return false;
-            }
-            log.Debug("Configuration file saved properly");
-            return true;
-        }
-        public static string AssemblyDirectory
-        {
-            get
-            {
-                string codeBase = Assembly.GetExecutingAssembly().CodeBase;
-                UriBuilder uri = new UriBuilder(codeBase);
-                string path = Uri.UnescapeDataString(uri.Path);
-                return Path.GetDirectoryName(path);
-            }
-        }
-
-        public static ConfigClass LoadConfig()
-        {
-
-            log.Debug("Reading configuration file");
-            ConfigClass tempClass;
-            try
-            {
-                string file = Decrypt(System.IO.File.ReadAllText(AssemblyDirectory + "\\config"), "4815162342");
-                tempClass = JsonConvert.DeserializeObject<ConfigClass>(file);
-            }
-            catch (Exception ex)
-            {
-                log.Error(ex.Message);
-                return null;
-            }
-
-            log.Debug("Configuration loaded");
-            return tempClass;
-
-        }
-
-        public string Encrypt(string source, string key)
-        {
-            TripleDESCryptoServiceProvider desCryptoProvider = new TripleDESCryptoServiceProvider();
-            MD5CryptoServiceProvider hashMD5Provider = new MD5CryptoServiceProvider();
-
-            byte[] byteHash;
-            byte[] byteBuff;
-
-            byteHash = hashMD5Provider.ComputeHash(Encoding.UTF8.GetBytes(key));
-            desCryptoProvider.Key = byteHash;
-            desCryptoProvider.Mode = CipherMode.ECB; //CBC, CFB
-            byteBuff = Encoding.UTF8.GetBytes(source);
-
-            string encoded =
-                Convert.ToBase64String(desCryptoProvider.CreateEncryptor().TransformFinalBlock(byteBuff, 0, byteBuff.Length));
-            return encoded;
-        }
-
-        public static string Decrypt(string encodedText, string key)
-        {
-            TripleDESCryptoServiceProvider desCryptoProvider = new TripleDESCryptoServiceProvider();
-            MD5CryptoServiceProvider hashMD5Provider = new MD5CryptoServiceProvider();
-
-            byte[] byteHash;
-            byte[] byteBuff;
-
-            byteHash = hashMD5Provider.ComputeHash(Encoding.UTF8.GetBytes(key));
-            desCryptoProvider.Key = byteHash;
-            desCryptoProvider.Mode = CipherMode.ECB; //CBC, CFB
-            byteBuff = Convert.FromBase64String(encodedText);
-
-            string plaintext = Encoding.UTF8.GetString(desCryptoProvider.CreateDecryptor().TransformFinalBlock(byteBuff, 0, byteBuff.Length));
-            return plaintext;
         }
     }
 }

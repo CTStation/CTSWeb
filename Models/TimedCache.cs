@@ -58,7 +58,7 @@ namespace CTSWeb.Models
 		public void Push (tKey roKey, tValue roValue)
         {
 			tItem<tValue> oItem = new tItem<tValue>(roValue);
-			_oCache.GetOrAdd(roKey, (roKey) => { return new ConcurrentQueue<tItem<tValue>>(); }).Enqueue(oItem);
+			_oCache.GetOrAdd(roKey, (oKey) => { return new ConcurrentQueue<tItem<tValue>>(); }).Enqueue(oItem);
         }
 
 
