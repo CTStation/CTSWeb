@@ -177,7 +177,10 @@ namespace CTSWeb.Models
                 catch (Exception ex1)
                 {
                     //  Console.WriteLine(ex1.Message);
-                    throw new Exception("Cannot initialize BFC connection" + ex1.Message);
+                    if (ex1.HResult == -2147024891)
+                        throw new Exception("Access denied", ex1);
+                    else
+                        throw new Exception("Cannot initialize BFC connection: " + ex1.Message);
                 }
             }
 
@@ -195,7 +198,7 @@ namespace CTSWeb.Models
             }
             catch (Exception ex)
             {
-                throw new Exception("Cannot set session context:" + ex.Message);
+                throw new Exception("Cannot set session context: " + ex.Message);
             }
             if (!_session2.IsLogged) throw new Exception("Cannot sign in into the data source : " + this._datasourceName);
         }

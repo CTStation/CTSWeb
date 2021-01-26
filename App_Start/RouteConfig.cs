@@ -5,7 +5,7 @@ using System.Web;
 using System.Web.Mvc;
 using System.Web.Routing;
 
-namespace WebApplication2
+namespace CTSWeb
 {
     public class RouteConfig
     {
@@ -16,7 +16,7 @@ namespace WebApplication2
             routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",
-                defaults: new {controller = "Api",  action = "Help", id = UrlParameter.Optional }
+                defaults: new { controller = "Api", action = "Help", id = UrlParameter.Optional }
             );
         }
     }

@@ -64,11 +64,13 @@ namespace CTSWeb.Models
 
             public override int GetHashCode()
             {
-                return      ((long)(this._brokerName.GetHashCode())     // Cast to long to avoid overflow
-                        + this._datasourceName.GetHashCode()
-                        + this._datasourcePassword.GetHashCode()
-                        + this._userName.GetHashCode()
-                        + this._password.GetHashCode()
+                Func<string, int> f = (string s) => s is null ? 0 : s.GetHashCode();
+
+                return      ((long)(f(this._brokerName))     // Cast to long to avoid overflow
+                        + f(this._datasourceName)
+                        + f(this._datasourcePassword)
+                        + f(this._userName)
+                        + f(this._password)
                         ).GetHashCode();
             }
 

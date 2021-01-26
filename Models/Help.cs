@@ -33,8 +33,8 @@ namespace CTSWeb.Models
                 SortedDictionary<string, SortedDictionary<string, string>> oList = new SortedDictionary<string, SortedDictionary<string, string>>();
 
                 S_AddCommand(oList, "Reportings", "GET", "Returns the list of reportings");
-                S_AddCommand(oList, "Reportings/ID", "POST", "Creates or updates 1 or many reportings");
-                S_AddCommand(oList, "Reportings/ID", "GET", "Returns the content of 1 reporting");
+                S_AddCommand(oList, "Reporting/ID", "POST", "Creates or updates 1 or many reportings");
+                S_AddCommand(oList, "Reporting/ID", "GET", "Returns the content of 1 reporting");
 
                 _aoCommands = S_Sort(oList);
             }

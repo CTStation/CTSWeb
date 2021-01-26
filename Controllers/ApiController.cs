@@ -32,10 +32,46 @@ namespace CTSWeb.Controllers
 
         public ActionResult Reportings()
         {
-            FCSession oSession = new FCSession(this.HttpContext);
-            ReportingManagerClient oManager = new ReportingManagerClient(oSession.Config);
+            ActionResult oRet = null;
 
-            return new S_JsonResult(oManager.GetReportings());
+            FCSession oSession = new FCSession(this.HttpContext);
+            try
+            {
+                ReportingManagerClient oManager = new ReportingManagerClient(oSession.Config);
+                oRet = new S_JsonResult(oManager.GetReportings());
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                oSession.Close();
+            }
+            return oRet;
+        }
+
+  
+        public ActionResult Reporting(int id)
+        {
+            ActionResult oRet = null;
+
+            FCSession oSession = new FCSession(this.HttpContext);
+            try
+            {
+                ReportingManagerClient oManager = new ReportingManagerClient(oSession.Config);
+                oRet = new S_JsonResult(oManager.GetReporting(id));
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                oSession.Close();
+            }
+
+            return oRet;
         }
     }
 }
