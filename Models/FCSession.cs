@@ -35,7 +35,7 @@ namespace CTSWeb.Models
                 _password = rsPassword;
             }
 
-            public S_ConnectionInfo(HttpContext roContext)
+            public S_ConnectionInfo(HttpContextBase roContext)
             {
                 System.Collections.Specialized.NameValueCollection oHead = roContext.Request.Headers;
 
@@ -85,7 +85,7 @@ namespace CTSWeb.Models
 
         public ConfigClass Config { get => _oConfig; }
 
-        public FCSession(HttpContext roContext)
+        public FCSession(HttpContextBase roContext)
         {
             _oInfo = new S_ConnectionInfo(roContext);
             ConfigClass oConfig = new ConfigClass();
