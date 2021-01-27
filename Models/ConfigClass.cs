@@ -134,7 +134,7 @@ namespace CTSWeb.Models
 
         }
         
-        public bool IsActive(string rsBrokerName = "", string rsDatasourceName = "", string rsUserName = "", string rsPassword = "")
+        public bool IsActive(string rsBrokerName = null, string rsDatasourceName = null, string rsUserName = null, string rsPassword = null)
         {
             bool bRet = false;
             if (!(_session2 is null)) { bRet = _session2.IsLogged; }
@@ -208,6 +208,8 @@ namespace CTSWeb.Models
             Close(this);
         }
 
+
+        // Need a class level function for the TimedCache to close the connections
         public static void Close(ConfigClass roCon) 
         { 
             try
@@ -235,6 +237,12 @@ namespace CTSWeb.Models
             {
                 log.Warn(ex.Message);
             }
+        }
+
+        // Finaliser closes the connections if not yet done
+        ~ConfigClass()
+        {
+            Disconnect();
         }
     }
 }

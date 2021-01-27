@@ -1,9 +1,12 @@
 ﻿using System;
+using System.IO;
+using System.Data;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Web.Mvc;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using CTSWeb.Models;
 
 namespace CTSWeb.Controllers
@@ -34,41 +37,46 @@ namespace CTSWeb.Controllers
         {
             ActionResult oRet = null;
 
-            FCSession oSession = new FCSession(this.HttpContext);
-            try
+            using (FCSession oSession = new FCSession(this.HttpContext))
             {
                 ReportingManagerClient oManager = new ReportingManagerClient(oSession.Config);
                 oRet = new S_JsonResult(oManager.GetReportings());
             }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-            finally
-            {
-                oSession.Close();
-            }
+
             return oRet;
         }
 
-  
+
         public ActionResult Reporting(int id)
         {
             ActionResult oRet = null;
-
-            FCSession oSession = new FCSession(this.HttpContext);
-            try
+            
+            using (FCSession oSession = new FCSession(this.HttpContext))
             {
                 ReportingManagerClient oManager = new ReportingManagerClient(oSession.Config);
                 oRet = new S_JsonResult(oManager.GetReporting(id));
             }
-            catch (Exception ex)
+
+            return oRet;
+        }
+
+        [HttpPost]
+        public ActionResult Reporting()
+        {
+            ActionResult oRet = null;
+
+            Stream oText = this.Request.InputStream;
+            oText.Seek(0, SeekOrigin.Begin);
+            JsonTextReader oJReader = new JsonTextReader(new StreamReader(oText));
+            try
             {
-                throw ex;
+                // JObject o = JObject.Load(oJReader);
+                DataSet oSet = new JsonSerializer().Deserialize<DataSet>(oJReader);
+                oRet = new S_JsonResult( (from row in oSet.Tables["Table"].AsEnumerable() select row["Phase"]).Distinct().ToList() );
             }
-            finally
+            catch (Exception e)
             {
-                oSession.Close();
+                oRet = new HttpStatusCodeResult(HttpStatusCode.BadRequest, e.Message);
             }
 
             return oRet;

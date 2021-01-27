@@ -10,7 +10,7 @@ using System.Web;
 
 namespace CTSWeb.Models
 {
-    public class FCSession
+    public class FCSession : IDisposable
     {
         private class S_ConnectionInfo
         {
@@ -64,7 +64,7 @@ namespace CTSWeb.Models
 
             public override int GetHashCode()
             {
-                Func<string, int> f = (string s) => s is null ? 0 : s.GetHashCode();
+                Func<string, int> f = (string s) => (s is null) ? 0 : s.GetHashCode();
 
                 return      ((long)(f(this._brokerName))     // Cast to long to avoid overflow
                         + f(this._datasourceName)
@@ -110,7 +110,7 @@ namespace CTSWeb.Models
             }
         }
 
-        public void Close()
+        public void Dispose()
         {
             if (!(_oConfig is null) && !(_oInfo is null))
             {

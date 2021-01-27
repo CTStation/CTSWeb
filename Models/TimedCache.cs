@@ -48,7 +48,7 @@ namespace CTSWeb.Models
 			_iLifespanTicks = (viLifespanTicks < S_Resolution) ? S_Resolution : viLifespanTicks;			// Minimum for a 1/100 resoltion of scanning for old values
 			_oDisposeValue = roDisposeValue;
 			_oCleanupThread = new Thread(this.S_RemoveOldItems);
-			_oCleanupThread.Name = "Cleanup";
+			_oCleanupThread.Name = "TimedCache cleanup every " + ((Double)(_iLifespanTicks / S_Resolution / 1000.0)).ToString() + " s";
 			_oCleanupThread.Priority = ThreadPriority.BelowNormal;
 			_oCleanupThread.IsBackground = true;
 			_oCleanupThread.Start(this);
