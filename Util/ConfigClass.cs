@@ -4,7 +4,7 @@ using CTCLIENTSERVERLib;
 using log4net;
 using System.Xml;
 
-namespace CTSWeb.Models
+namespace CTSWeb.Util
 {
     public class ConfigClass
     {
@@ -148,9 +148,9 @@ namespace CTSWeb.Models
 
         public void Connect()
         {
-            CTCLIENTSERVERLib.ICtSessionCtx sessionContext = null;
-            ICtSessionClient sessionClient = null;
-            CtApplicationClientClass cacc = null;
+            CTCLIENTSERVERLib.ICtSessionCtx sessionContext;
+            ICtSessionClient sessionClient;
+            CtApplicationClientClass cacc;
 
             try
             {

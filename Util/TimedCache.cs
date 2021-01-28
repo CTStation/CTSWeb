@@ -5,7 +5,7 @@ using System.Threading;
 using System.Diagnostics;
 
 
-namespace CTSWeb.Models
+namespace CTSWeb.Util
 {
 	// The cache stores multiple values under the same key
 	// For the same key, values are retrieved in FIFO style
@@ -20,12 +20,12 @@ namespace CTSWeb.Models
 
 	public class TimedCache<tKey, tValue>
 	{
-		private class tItem<tValue2>
+		private class TItem<tValue2>
 		{
-			private int _iLastUsedTick;
-			private tValue2 _oValue;
+			private readonly int _iLastUsedTick;
+			private readonly tValue2 _oValue;
 
-			public tItem(tValue2 roValue)
+			public TItem(tValue2 roValue)
 			{
 				_oValue = roValue;
 				_iLastUsedTick = System.Environment.TickCount;
@@ -36,53 +36,53 @@ namespace CTSWeb.Models
 		}
 
 		private const int S_Resolution = 100;		// Number of time the cleanup is called for each lifespan
-		private ConcurrentDictionary< tKey, ConcurrentQueue< tItem<tValue> > > _oCache;
-		private int _iLifespanTicks;   
-		private Action<tValue> _oDisposeValue = null;
-		private Thread _oCleanupThread;
+		private readonly ConcurrentDictionary< tKey, ConcurrentQueue< TItem<tValue> > > _oCache;
+		private readonly int _iLifespanTicks;   
+		private readonly Action<tValue> _oDisposeValue = null;
+		private readonly Thread _oCleanupThread;
 
 		
 		public TimedCache(Action<tValue> roDisposeValue, int viLifespanTicks = 300000)    // Default life span = 5', 300'', 300000ms
 		{
-			_oCache = new ConcurrentDictionary<tKey, ConcurrentQueue<tItem<tValue>>>();
+			_oCache = new ConcurrentDictionary<tKey, ConcurrentQueue<TItem<tValue>>>();
 			_iLifespanTicks = (viLifespanTicks < S_Resolution) ? S_Resolution : viLifespanTicks;			// Minimum for a 1/100 resoltion of scanning for old values
 			_oDisposeValue = roDisposeValue;
-			_oCleanupThread = new Thread(this.S_RemoveOldItems);
-			_oCleanupThread.Name = "TimedCache cleanup every " + ((Double)(_iLifespanTicks / S_Resolution / 1000.0)).ToString() + " s";
-			_oCleanupThread.Priority = ThreadPriority.BelowNormal;
-			_oCleanupThread.IsBackground = true;
-			_oCleanupThread.Start(this);
+            _oCleanupThread = new Thread(this.PrRemoveOldItems)
+            {
+                Name = "TimedCache cleanup every " + ((Double)(_iLifespanTicks / S_Resolution / 1000.0)).ToString() + " s",
+                Priority = ThreadPriority.BelowNormal,
+                IsBackground = true
+            };
+            _oCleanupThread.Start(this);
 		}
 
 
 		public void Push (tKey roKey, tValue roValue)
         {
-			tItem<tValue> oItem = new tItem<tValue>(roValue);
-			_oCache.GetOrAdd(roKey, (oKey) => { return new ConcurrentQueue<tItem<tValue>>(); }).Enqueue(oItem);
+			TItem<tValue> oItem = new TItem<tValue>(roValue);
+			_oCache.GetOrAdd(roKey, (oKey) => { return new ConcurrentQueue<TItem<tValue>>(); }).Enqueue(oItem);
         }
 
 
 		public bool TryPop(tKey roKey, out tValue roValue)
         {
 			bool bRet = false;
-			roValue = default(tValue);
+            roValue = default(tValue);
 
-			ConcurrentQueue<tItem<tValue>> oFIFO;
-			if (_oCache.TryGetValue(roKey, out oFIFO))
+            if (_oCache.TryGetValue(roKey, out ConcurrentQueue<TItem<tValue>> oFIFO))
             {
-				tItem<tValue> oItem;
-				if (oFIFO.TryDequeue(out oItem))
-				{
-					// Can return a somewhat outdated entry, never much more than the resolution
-					roValue = oItem.Value;
-					bRet = true;
-				}	
+                if (oFIFO.TryDequeue(out TItem<tValue> oItem))
+                {
+                    // Can return a somewhat outdated entry, never much more than the resolution
+                    roValue = oItem.Value;
+                    bRet = true;
+                }
             }
-			return bRet;
+            return bRet;
 		}
 
 
-		private void S_RemoveOldItems(object rObj)
+		private void PrRemoveOldItems(object rObj)
 		{
 			
 			int iLastLiveTick;
@@ -93,14 +93,14 @@ namespace CTSWeb.Models
 				// Avoid underflow during the first 5 minutes of server uptime
 				iLastLiveTick = Environment.TickCount;
 				if (oCache._iLifespanTicks < iLastLiveTick) iLastLiveTick -= oCache._iLifespanTicks;
-				foreach (KeyValuePair<tKey, ConcurrentQueue< tItem<tValue>>> o in oCache._oCache)
+				foreach (KeyValuePair<tKey, ConcurrentQueue< TItem<tValue>>> o in oCache._oCache)
 				{
-					foreach (tItem<tValue> oItem in o.Value)
+					foreach (TItem<tValue> oItem in o.Value)
 					{
 						if (oItem.LastUsed < iLastLiveTick)
 						{
 							// We found an old entry. However it may have been poped by another process
-							if (o.Value.TryDequeue(out tItem<tValue> oRemovedItem))
+							if (o.Value.TryDequeue(out TItem<tValue> oRemovedItem))
 							{
 								if (!(oRemovedItem.LastUsed < iLastLiveTick))
 								{
@@ -108,11 +108,8 @@ namespace CTSWeb.Models
 									// Too bad, but no way to recover it, so silently push that under the rug in non debug mode
 									Debug.Print ("Discarded a still yound entry, aged " + ((Environment.TickCount - oRemovedItem.LastUsed) / 1000.0).ToString() + "s");
 								}
-								if (oCache._oDisposeValue != null)
-								{
-									oCache._oDisposeValue(oRemovedItem.Value);
-								}
-							}
+                                oCache._oDisposeValue?.Invoke(oRemovedItem.Value);
+                            }
 						} else {
 							break;	// if an entry is live, all the next ones should be. Otherwise, they'll get caght on the next run 
                         }

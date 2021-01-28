@@ -4,12 +4,12 @@ using CTREPORTINGMODULELib;
 using CTKREFLib;
 using CTCLIENTSERVERLib;
 using CTCORELib;
+using CTSWeb.Util;
 
 namespace CTSWeb.Models
 {
     public class Framework
     {
-
         public List<ControlsSets> ControlSets;
         public List<Control> Controls;
         public List<ControlSubSets> ControlSubSets;
@@ -29,14 +29,34 @@ namespace CTSWeb.Models
             //    Controls.Add(new Control(obj));
             //}
 
-            foreach (IRefControlSet obj in framework.CtrlSetList)
-            {
-                ControlSets.Add(new ControlsSets(obj));
-            }
+            //foreach (IRefControlSet obj in framework.CtrlSetList)
+            //{
+            //    ControlSets.Add(new ControlsSets(obj));
+            //}
 
 
         }
 
+        public bool TryGet(string rsPhaseName, string rsVersionName, FCSession roFCSession, out IRefObjRef roRef)
+        {
+            bool bFound = false;
+
+            ICtProviderContainer oProviderContainer = (ICtProviderContainer)roFCSession.Config; ;
+            ICtObjectManager oManager = (ICtObjectManager)oProviderContainer.get_Provider(1, (int)ct_core_manager.CT_REFTABLE_MANAGER);
+            ICtGenCollection oColl = oManager. GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
+
+            roRef = default;
+            foreach (IRefObjRef oFrame in oColl)
+            {
+                if (oFrame.Phase.Name == rsPhaseName && oFrame.Version.Name == rsVersionName)
+                {
+                    bFound = true;
+                    roRef = oFrame;
+                    break;
+                }
+            }
+            return bFound;
+        }
     }
 
     public class ControlsSets

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using CTCLIENTSERVERLib;
 using CTREPORTINGMODULELib;
+using CTSWeb.Util;
 
 
 namespace CTSWeb.Models
@@ -9,7 +10,7 @@ namespace CTSWeb.Models
     public class ReportingManagerClient
     {
 
-        private ConfigClass _config;
+        private readonly ConfigClass _config;
 
 
 
@@ -29,7 +30,7 @@ namespace CTSWeb.Models
             ICtObjectManager reportingManager = (ICtObjectManager)providerContainer.get_Provider(1, -523588);
             CTCLIENTSERVERLib.ICtGenCollection reportingsCol = reportingManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
 
-            foreach(ICtReporting reporting in reportingsCol)
+            foreach (ICtReporting reporting in reportingsCol)
             {
                 ReportingModel mod = new ReportingModel(reporting);
 
@@ -57,7 +58,7 @@ namespace CTSWeb.Models
             {
                 if (reporting.ID == id)
                 {
-                    ReportingModel mod = new ReportingModel(reporting,true);
+                    ReportingModel mod = new ReportingModel(reporting, true);
                     reportings.Add(mod);
                 }
             }
@@ -65,6 +66,12 @@ namespace CTSWeb.Models
 
 
             return reportings;
+        }
+
+        public int CreateReporting(String rsCategName, string rsCategVersionName, string rsUpdPerName, DateTime roStartDate, DateTime roEndDate, DateTime roDeadline)
+        {
+            ReportingModel oRep = new ReportingModel();
+            return 0;
         }
     }
 }

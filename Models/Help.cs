@@ -22,8 +22,8 @@ namespace CTSWeb.Models
         //      Implementation
         //----------------------------------
 
-        private static object[] _aoCommands;
-        private static bool _bIsInit;
+        private static readonly object[] _aoCommands;
+        private static readonly bool _bIsInit;
 
         static Help()
         {
@@ -32,16 +32,16 @@ namespace CTSWeb.Models
                 _bIsInit = true;
                 SortedDictionary<string, SortedDictionary<string, string>> oList = new SortedDictionary<string, SortedDictionary<string, string>>();
 
-                S_AddCommand(oList, "Reportings", "GET", "Returns the list of reportings");
-                S_AddCommand(oList, "Reporting", "POST", "Creates or updates 1 or many reportings");
-                S_AddCommand(oList, "Reporting/ID", "GET", "Returns the content of 1 reporting");
+                PrAddCommand(oList, "Reportings", "GET", "Returns the list of reportings");
+                PrAddCommand(oList, "Reporting", "POST", "Creates or updates 1 or many reportings");
+                PrAddCommand(oList, "Reporting/ID", "GET", "Returns the content of 1 reporting");
 
-                _aoCommands = S_Sort(oList);
+                _aoCommands = PrSort(oList);
             }
         }
 
 
-        private static void S_AddCommand(SortedDictionary<string, SortedDictionary<string, string>> roList, string rsCommand, string rsAction, string rsDesc)
+        private static void PrAddCommand(SortedDictionary<string, SortedDictionary<string, string>> roList, string rsCommand, string rsAction, string rsDesc)
         {
             SortedDictionary<string, string> oDict;
 
@@ -52,13 +52,15 @@ namespace CTSWeb.Models
             }
             else
             {
-                oDict = new SortedDictionary<string, string>();
-                oDict.Add(rsAction, rsDesc);
+                oDict = new SortedDictionary<string, string>
+                {
+                    { rsAction, rsDesc }
+                };
                 roList.Add(rsCommand, oDict);
             }
         }
 
-        private static object[] S_Sort(SortedDictionary<string, SortedDictionary<string, string>> roList)
+        private static object[] PrSort(SortedDictionary<string, SortedDictionary<string, string>> roList)
         {
             List<object> aoList = new List<object>();
 

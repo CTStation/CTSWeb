@@ -8,17 +8,17 @@
 using System;
 using System.Web;
 
-namespace CTSWeb.Models
+namespace CTSWeb.Util
 {
     public class FCSession : IDisposable
     {
-        private class S_ConnectionInfo
+        private class PrConnectionInfo
         {
-            private string _brokerName;
-            private string _datasourceName;
-            private string _datasourcePassword;
-            private string _userName;
-            private string _password;
+            private readonly string _brokerName;
+            private readonly string _datasourceName;
+            private readonly string _datasourcePassword;
+            private readonly string _userName;
+            private readonly string _password;
 
             public string BrokerName            { get => _brokerName; }
             public string DatasourceName        { get => _datasourceName; }
@@ -26,7 +26,7 @@ namespace CTSWeb.Models
             public string UserName              { get => _userName; }
             public string Password              { get => _password; }
 
-            public S_ConnectionInfo(string rsBrokerName, string rsDatasourceName, string rsDatasourcePassword, string rsUserName, string rsPassword)
+            public PrConnectionInfo(string rsBrokerName, string rsDatasourceName, string rsDatasourcePassword, string rsUserName, string rsPassword)
             {
                 _brokerName = rsBrokerName;
                 _datasourceName = rsDatasourceName;
@@ -35,7 +35,7 @@ namespace CTSWeb.Models
                 _password = rsPassword;
             }
 
-            public S_ConnectionInfo(HttpContextBase roContext)
+            public PrConnectionInfo(HttpContextBase roContext)
             {
                 System.Collections.Specialized.NameValueCollection oHead = roContext.Request.Headers;
 
@@ -47,7 +47,7 @@ namespace CTSWeb.Models
             }
 
             // No need to test for null when type is fixed
-            public bool Equals(S_ConnectionInfo roObj)
+            public bool Equals(PrConnectionInfo roObj)
             {
                 return      this._brokerName        == roObj._brokerName
                         && this._datasourceName     == roObj._datasourceName
@@ -57,14 +57,11 @@ namespace CTSWeb.Models
                         ;
             }
 
-            public override bool Equals(Object roObj)
-            {
-                if (roObj is S_ConnectionInfo) return this.Equals((S_ConnectionInfo)roObj); else return false;
-            }
+            public override bool Equals(object roObj) => roObj is PrConnectionInfo info && Equals(info);
 
             public override int GetHashCode()
             {
-                Func<string, int> f = (string s) => (s is null) ? 0 : s.GetHashCode();
+                int f(string s) => (s is null) ? 0 : s.GetHashCode();
 
                 return      ((long)(f(this._brokerName))     // Cast to long to avoid overflow
                         + f(this._datasourceName)
@@ -74,26 +71,25 @@ namespace CTSWeb.Models
                         ).GetHashCode();
             }
 
-            public static bool operator ==(S_ConnectionInfo ro1, S_ConnectionInfo ro2) { return ro1.Equals(ro2); }
+            public static bool operator ==(PrConnectionInfo ro1, PrConnectionInfo ro2) { return ro1.Equals(ro2); }
 
-            public static bool operator !=(S_ConnectionInfo ro1, S_ConnectionInfo ro2) { return !ro1.Equals(ro2); }
+            public static bool operator !=(PrConnectionInfo ro1, PrConnectionInfo ro2) { return !ro1.Equals(ro2); }
         }
 
-        private static TimedCache<S_ConnectionInfo, ConfigClass> S_oCache = 
-                new TimedCache<S_ConnectionInfo, ConfigClass>(ConfigClass.Close);   // Closes unused connections after 5 minutes
+        private static readonly TimedCache<PrConnectionInfo, ConfigClass> S_oCache = 
+                new TimedCache<PrConnectionInfo, ConfigClass>(ConfigClass.Close);   // Closes unused connections after 5 minutes
 
-        private S_ConnectionInfo _oInfo;
-        private ConfigClass _oConfig;
+        private readonly PrConnectionInfo _oInfo;
+        private readonly ConfigClass _oConfig;
 
         public ConfigClass Config { get => _oConfig; }
 
         public FCSession(HttpContextBase roContext)
         {
-            _oInfo = new S_ConnectionInfo(roContext);
-            ConfigClass oConfig = new ConfigClass();
+            _oInfo = new PrConnectionInfo(roContext);
             bool bFoundInCache = false;
 
-            while (S_oCache.TryPop(_oInfo, out oConfig))
+            while (S_oCache.TryPop(_oInfo, out ConfigClass oConfig))
             {
                 if (oConfig.IsActive(_oInfo.BrokerName, _oInfo.DatasourceName, _oInfo.UserName, _oInfo.Password))
                 {

@@ -153,17 +153,17 @@
     <Compile Include="App_Start\BundleConfig.cs" />
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
-    <Compile Include="Models\ConfigClass.cs" />
+    <Compile Include="Util\ConfigClass.cs" />
     <Compile Include="Controllers\ApiController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Models\FCSession.cs" />
+    <Compile Include="Util\FCSession.cs" />
     <Compile Include="Models\Help.cs" />
     <Compile Include="Models\Models.cs" />
     <Compile Include="Models\ReportingManagerClient.cs" />
     <Compile Include="Models\ReportingModel.cs" />
-    <Compile Include="Models\TimedCache.cs" />
+    <Compile Include="Util\TimedCache.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

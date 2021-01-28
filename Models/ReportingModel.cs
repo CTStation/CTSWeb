@@ -44,7 +44,13 @@ namespace CTSWeb.Models
         public uint ReportingModifyComment;
         public DateTime ReportingHierarchyDate;
         public uint Locked;
-        List<RelatedEntityReportingCollection> RelatedEntityReportingCollection;
+        readonly List<RelatedEntityReportingCollection> RelatedEntityReportingCollection;
+
+        public ReportingModel()
+        {
+            // Create empty
+            Dirty = true;
+        }
 
         public ReportingModel(ICtReporting reporting, bool details = false)
         {
