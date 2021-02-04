@@ -81,6 +81,10 @@
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtReportingModuleLib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
+    <Reference Include="Interop.CtTransferLib">
+      <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtTransferLib.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
     <Reference Include="log4net, Version=1.2.11.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
       <HintPath>packages\log4net.2.0.0\lib\net40-full\log4net.dll</HintPath>
     </Reference>
@@ -153,12 +157,14 @@
     <Compile Include="App_Start\BundleConfig.cs" />
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
+    <Compile Include="Util\Manager.cs" />
+    <Compile Include="Util\Language.cs" />
     <Compile Include="Util\ConfigClass.cs" />
     <Compile Include="Controllers\ApiController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Util\FCSession.cs" />
+    <Compile Include="Util\Context.cs" />
     <Compile Include="Models\Help.cs" />
     <Compile Include="Models\Models.cs" />
     <Compile Include="Models\ReportingManagerClient.cs" />

@@ -1,0 +1,39 @@
+﻿extensions: designer.cs generated.cs
+extensions: .cs .cpp .h
+#region Copyright
+// ----------------------- IMPORTANT - READ CAREFULLY: COPYRIGHT NOTICE -------------------
+// -- THIS SOFTWARE IS THE PROPERTY OF CTStation S.A.S. IN ANY COUNTRY                   --
+// -- (WWW.CTSTATION.NET). ANY COPY, CHANGE OR DERIVATIVE WORK                           --
+// -- IS SUBJECT TO CTSTATION S.A.S.’S PRIOR WRITTEN CONSENT.                            --
+// -- THIS SOFTWARE IS REGISTERED TO THE FRENCH ANTI-PIRACY AGENCY (APP).                --
+// -- COPYRIGHT 2020-01 CTSTATTION S.A.S. – ALL RIGHTS RESERVED.                         --
+// ----------------------------------------------------------------------------------------
+#endregion
+extensions: .aspx .ascx
+<%--  
+' ---- ------------------- IMPORTANT - READ CAREFULLY: COPYRIGHT NOTICE -------------------
+' -- THIS SOFTWARE IS THE PROPERTY OF CTStation S.A.S. IN ANY COUNTRY                   --
+' -- (WWW.CTSTATION.NET). ANY COPY, CHANGE OR DERIVATIVE WORK                           --
+' -- IS SUBJECT TO CTSTATION S.A.S.’S PRIOR WRITTEN CONSENT.                            --
+' -- THIS SOFTWARE IS REGISTERED TO THE FRENCH ANTI-PIRACY AGENCY (APP).                --
+' -- COPYRIGHT 2020-01 CTSTATTION S.A.S. – ALL RIGHTS RESERVED.                         --
+' ----------------------------------------------------------------------------------------
+--%>
+extensions: .vb
+' ----------------------- IMPORTANT - READ CAREFULLY: COPYRIGHT NOTICE -------------------
+' -- THIS SOFTWARE IS THE PROPERTY OF CTStation S.A.S. IN ANY COUNTRY                   --
+' -- (WWW.CTSTATION.NET). ANY COPY, CHANGE OR DERIVATIVE WORK                           --
+' -- IS SUBJECT TO CTSTATION S.A.S.’S PRIOR WRITTEN CONSENT.                            --
+' -- THIS SOFTWARE IS REGISTERED TO THE FRENCH ANTI-PIRACY AGENCY (APP).                --
+' -- COPYRIGHT 2020-01 CTSTATTION S.A.S. – ALL RIGHTS RESERVED.                         --
+' ----------------------------------------------------------------------------------------
+extensions:  .xml .config .xsd
+<!-- 
+' _______________________ IMPORTANT - READ CAREFULLY: COPYRIGHT NOTICE __________________ '
+'    THIS SOFTWARE IS THE PROPERTY OF CTStation S.A.S. IN ANY COUNTRY                     '
+'    (WWW.CTSTATION.NET). ANY COPY, CHANGE OR DERIVATIVE WORK                             '
+'    IS SUBJECT TO CTSTATION S.A.S.’S PRIOR WRITTEN CONSENT.                              '
+'    THIS SOFTWARE IS REGISTERED TO THE FRENCH ANTI-PIRACY AGENCY (APP).                  '
+'    COPYRIGHT 2020-01 CTSTATTION S.A.S. – ALL RIGHTS RESERVED.                           '
+' _______________________________________________________________________________________ '
+-->

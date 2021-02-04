@@ -1,4 +1,14 @@
-﻿using System;
+﻿#region Copyright
+// ----------------------- IMPORTANT - READ CAREFULLY: COPYRIGHT NOTICE -------------------
+// -- THIS SOFTWARE IS THE PROPERTY OF CTStation S.A.S. IN ANY COUNTRY                   --
+// -- (WWW.CTSTATION.NET). ANY COPY, CHANGE OR DERIVATIVE WORK                           --
+// -- IS SUBJECT TO CTSTATION S.A.S.’S PRIOR WRITTEN CONSENT.                            --
+// -- THIS SOFTWARE IS REGISTERED TO THE FRENCH ANTI-PIRACY AGENCY (APP).                --
+// -- COPYRIGHT 2020-01 CTSTATTION S.A.S. – ALL RIGHTS RESERVED.                         --
+// ----------------------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.IO;
 using System.Data;
 using System.Collections.Generic;
@@ -6,15 +16,21 @@ using System.Linq;
 using System.Net;
 using System.Web.Mvc;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using CTSWeb.Models;
 using CTSWeb.Util;
 
+
+
 namespace CTSWeb.Controllers
 {
+    // Main API controller
+    //
+    // TODO: Add license-controlled access to verbs  https://github.com/rubicon-oss/LicenseHeaderManager/wiki/License-Header-Definitions
+    // Standard.Licensing
+
     public class ApiController : Controller
     {
-        // JsonResult with Newtonsoft JSON, giving more control than MS
+        // JsonResult with NewtonSoft JSON, giving more control than MS
         private class PrJsonResult : ContentResult
         {
             public PrJsonResult(Object roObj)
@@ -23,10 +39,10 @@ namespace CTSWeb.Controllers
                 this.ContentType = "application/json";
                 JsonSerializerSettings oSettings = new JsonSerializerSettings
                 {
-                    DateFormatHandling = DateFormatHandling.IsoDateFormat,
-                    DateTimeZoneHandling = DateTimeZoneHandling.RoundtripKind,
-                    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                    DateFormatHandling         = DateFormatHandling.IsoDateFormat,
+                    DateTimeZoneHandling       = DateTimeZoneHandling.Utc,          // Force time zone info
+                    PreserveReferencesHandling = PreserveReferencesHandling.None,   // Same object is serialized multiple times
+                    ReferenceLoopHandling      = ReferenceLoopHandling.Ignore
                 };
                 this.Content = JsonConvert.SerializeObject(roObj, oSettings);
             }
@@ -55,8 +71,9 @@ namespace CTSWeb.Controllers
 
         public ActionResult Reportings() => PrSafeResult(() =>
         {
-            using (FCSession oSession = new FCSession(this.HttpContext))
+            using (Context oSession = new Context(this.HttpContext))
             {
+                return new PrJsonResult(oSession.GetAll<ReportingModel>());
                 ReportingManagerClient oManager = new ReportingManagerClient(oSession.Config);
                 return new PrJsonResult(oManager.GetReportings());
             }
@@ -66,7 +83,7 @@ namespace CTSWeb.Controllers
 
         public ActionResult Reporting(int id) => PrSafeResult(() =>
         {
-            using (FCSession oSession = new FCSession(this.HttpContext))
+            using (Context oSession = new Context(this.HttpContext))
             {
                 ReportingManagerClient oManager = new ReportingManagerClient(oSession.Config);
                 return new PrJsonResult(oManager.GetReporting(id));
@@ -91,5 +108,16 @@ namespace CTSWeb.Controllers
             else throw new KeyNotFoundException("Table not found in dataset");
         }
         );
+
+        public ActionResult Languages() => PrSafeResult(() =>
+        {
+            using (Context oContext = new Context(this.HttpContext))
+            {
+                return new PrJsonResult(oContext.GetActiveLanguages());
+            }
+        }
+        );
+
+
     }
 }

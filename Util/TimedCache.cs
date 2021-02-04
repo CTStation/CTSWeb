@@ -1,4 +1,15 @@
-﻿using System;
+﻿#region Copyright
+// ----------------------- IMPORTANT - READ CAREFULLY: COPYRIGHT NOTICE -------------------
+// -- THIS SOFTWARE IS THE PROPERTY OF CTStation S.A.S. IN ANY COUNTRY                   --
+// -- (WWW.CTSTATION.NET). ANY COPY, CHANGE OR DERIVATIVE WORK                           --
+// -- IS SUBJECT TO CTSTATION S.A.S.’S PRIOR WRITTEN CONSENT.                            --
+// -- THIS SOFTWARE IS REGISTERED TO THE FRENCH ANTI-PIRACY AGENCY (APP).                --
+// -- COPYRIGHT 2020-01 CTSTATTION S.A.S. – ALL RIGHTS RESERVED.                         --
+// ----------------------------------------------------------------------------------------
+#endregion
+
+
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
@@ -7,16 +18,18 @@ using System.Diagnostics;
 
 namespace CTSWeb.Util
 {
-	// The cache stores multiple values under the same key
-	// For the same key, values are retrieved in FIFO style
-	// A maximum lifespan is expressed in milisecounds, and values not accessed for this duration are removed and disposed of
-	//		A method passed in the constructir will be called upon disposal
-	// void Push(Key, Value) stores a value
-	// Bool TryPop(Key, out Value) returns true if a value is found for this key. 
-	//		In this case, the value is removed from the cache and returned in the secound argument
-	//		Otherwise, the secound argument is undefined
+	// A FIFO cache regularly pruned of old items
+	//		Cleaning runs in a dedicated thread for each object. The thread is never stopped
+	//		The cache stores multiple values under the same key
+	//		Values with the same key are retrieved in FIFO style
+	//		A maximum lifespan is expressed in milliseconds, and values not accessed for this duration are removed and disposed of
+	//		A method passed in the constructor will be called upon disposal
 
-	// The FIFO queue for each key is never removed, to avoid a race condition
+	// void Push(Key, Value) stores a value
+	//
+	// Bool TryPop(Key, out Value) returns true if a value is found for this key. 
+	//		In this case, the value is removed from the cache and returned in the second argument
+	//		Otherwise, the second argument is undefined
 
 	public class TimedCache<tKey, tValue>
 	{
@@ -42,14 +55,14 @@ namespace CTSWeb.Util
 		private readonly Thread _oCleanupThread;
 
 		
-		public TimedCache(Action<tValue> roDisposeValue, int viLifespanTicks = 300000)    // Default life span = 5', 300'', 300000ms
+		public TimedCache(Action<tValue> roDisposeValue, int viLifespanTicks = 300000)    // Default life span = 5', 300s, 300000ms
 		{
 			_oCache = new ConcurrentDictionary<tKey, ConcurrentQueue<TItem<tValue>>>();
-			_iLifespanTicks = (viLifespanTicks < S_Resolution) ? S_Resolution : viLifespanTicks;			// Minimum for a 1/100 resoltion of scanning for old values
+			_iLifespanTicks = (viLifespanTicks < S_Resolution) ? S_Resolution : viLifespanTicks;			// Minimum for a 1/100 resolution of scanning for old values
 			_oDisposeValue = roDisposeValue;
             _oCleanupThread = new Thread(this.PrRemoveOldItems)
             {
-                Name = "TimedCache cleanup every " + ((Double)(_iLifespanTicks / S_Resolution / 1000.0)).ToString() + " s",
+                Name = "TimedCache cleanup every " + ((Double)(_iLifespanTicks / S_Resolution / 1000.0)).ToString() + " second",
                 Priority = ThreadPriority.BelowNormal,
                 IsBackground = true
             };
@@ -77,8 +90,9 @@ namespace CTSWeb.Util
                     roValue = oItem.Value;
                     bRet = true;
                 }
-            }
-            return bRet;
+				// The FIFO queue for each key is never removed, to avoid a race condition
+			}
+			return bRet;
 		}
 
 

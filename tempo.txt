@@ -1,0 +1,868 @@
+
+
+    public class EntitiesReportingHelper : ManagerHelper
+    {
+        public static bool ChangeEntityReporting(FinanceConnection fc, string phase, string period, string unit, string comment = null, string entrySite = null, string entryCurrency = null, string publicationSite = null, string ownerGroup = null,
+                                         DateTime? packPubDeadLine = null, bool authorizeAdvPub = false, int integAfterPub = 0, int ctrlLvlAfterPub = 0, int integrAfterRecep = 0, int ctrlLvlAfterRecep = 0)
+        {
+
+            ICtEntityReporting erg = null;
+            ICtObjectManager entityReportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.EntityReporting, fc.Session2);
+            ICtGenCollection list = entityReportingManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
+            foreach (ICtEntityReporting entity in list)
+            {
+                if (entity.Phase.Name == phase && entity.UpdatePeriod.Name == period && entity.Entity.Name == unit)
+                {
+                    erg = entity;
+                }
+            }
+
+            ICtRecipient entrySiteRecipient = null;
+            ICtRecipient publicationSiteRecipient = null;
+
+            if (entrySite != null || publicationSite != null)
+            {
+                ICtObjectManager adressBookManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.Recipient, fc.Session2);
+                ICtGenCollection adressBooks = adressBookManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
+                foreach (ICtRecipient adressBook in adressBooks)
+                {
+                    if (adressBook.Name == entrySite)
+                    {
+                        entrySiteRecipient = adressBook;
+                    }
+
+                    if (adressBook.Name == publicationSite)
+                    {
+                        publicationSiteRecipient = adressBook;
+                    }
+                }
+            }
+
+            ICtRefValue currencyRefValue = null;
+            if (entryCurrency != null)
+            {
+                ICtObjectManager refvalueCurrencyManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.RefValueCurrency, fc.Session2);
+                ICtGenCollection refvalueCurrencys = refvalueCurrencyManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
+                foreach (ICtRefValue rv in refvalueCurrencys)
+                {
+                    if (rv.Name == entryCurrency)
+                    {
+                        currencyRefValue = rv;
+                    }
+                }
+            }
+
+
+            erg.AccessMode = ACCESSFLAGS.OM_WRITE;
+
+            if (currencyRefValue != null)
+            {
+                erg.set_RelVal((int)CtReportingRelationships.CT_REL_PACK_INPUT_CURRENCY, currencyRefValue);
+            }
+
+            if (entrySiteRecipient != null)
+            {
+                erg.set_RelVal((int)CtReportingRelationships.CT_REL_ENTITY_REP_INPUT_RECIPIENT, entrySiteRecipient);
+            }
+
+            if (publicationSiteRecipient != null)
+            {
+                erg.set_RelVal((int)CtReportingRelationships.CT_REL_ENTITY_REP_PUBLISHING_RECIPIENT, publicationSiteRecipient);
+
+            }
+
+            if (erg == null)
+            {
+                //Entity reporting introuvable
+                return false;
+            }
+
+            if (comment != null)
+            {
+                erg.set_Desc(ct_desctype.ctdesc_comment, lang_t.lang_1, comment);
+            }
+
+            //if (packPubDeadLine.HasValue)
+            //{
+            //    erg.set_PropVal((int)CtReportingProperties.CT_PROP_PACK_PUBLISHING_CUTOFF_DATE, (DateTime)packPubDeadLine);
+            //}
+
+            //if (authorizeAdvPub)
+            //{
+            //    SByte aep = 1;
+            //    erg.set_PropVal((int)CtReportingProperties.CT_PROP_ALLOW_EARLY_PUBLISHING, aep);
+            //}
+            //else
+            //{
+            //    SByte aep = 0;
+            //    erg.set_PropVal((int)CtReportingProperties.CT_PROP_ALLOW_EARLY_PUBLISHING, aep);
+            //}
+
+            //integAfterPub = (int)(integAfterPub * Math.Pow(2, 16));
+            //erg.set_PropVal((int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_PUB, integAfterPub);
+            //integrAfterRecep = (int)(integrAfterRecep * Math.Pow(2, 16));
+            //erg.set_PropVal((int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_TRANSFER, integrAfterRecep);
+
+            if (ownerGroup != null)
+            {
+                SyWorkGroup workgroup = WorkGroupHelper.WorkGroup(fc, ownerGroup, EntitiesHelper.ObjectProperty.CT_NAME_PROP);
+                if (workgroup != null)
+                {
+                    erg.OwnerWorkgroup = workgroup.ID;
+                }
+            }
+
+            try
+            {
+                entityReportingManager.SaveObject(erg);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CoreMonitoringEPM.Warning(string.Format("ERROR : {0}", System.Reflection.MethodBase.GetCurrentMethod().Name), ex);
+                return false;
+            }
+        }
+
+        public static SyEntityReporting GetEntityReporting(FinanceConnection fc, string phase, string period, string unit)
+        {
+            try
+            {
+                //TODO parametres dfacultatifs
+
+                ICtObjectManager entityReportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerHelper.ManagerFinancialConsolidation.EntityReporting, fc.Session2);
+                ICtGenCollection list = entityReportingManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
+                foreach (ICtEntityReporting entity in list)
+                {
+                    try
+                    {
+                        if (entity.Phase.Name.ToUpper() == phase.ToUpper() && entity.UpdatePeriod.Name.ToUpper() == period.ToUpper() && entity.Entity.Name.ToUpper() == unit.ToUpper())
+                        {
+                            SyEntityReporting syEntityreporting = new SyEntityReporting(entity);
+                            return syEntityreporting;
+                        }
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+                }
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+
+        }
+
+        /// <summary>
+        /// Fonction qui retourne une liste de entity reportings
+        /// </summary>
+        /// <param name="fc">Finance Connection</param>
+        /// <param name="phase">Phase</param>
+        /// <param name="period">Period</param>
+        /// <returns>List<SyEntityReporting></returns>
+        public static List<SyEntityReporting> GetEntityReportings(FinanceConnection fc, string phase, string period)
+        {
+            List<SyEntityReporting> entityReportingsList = new List<SyEntityReporting>();
+            try
+            {
+
+                ICtObjectManager entityReportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerHelper.ManagerFinancialConsolidation.EntityReporting, fc.Session2);
+                ICtGenCollection list = entityReportingManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
+                foreach (ICtEntityReporting entity in list)
+                {
+                    try
+                    {
+                        if ((entity.Phase.Name.ToUpper() == phase.ToUpper() && entity.UpdatePeriod.Name.ToUpper() == period.ToUpper()))
+                        {
+                            SyEntityReporting syEntityreporting = new SyEntityReporting(entity);
+                            entityReportingsList.Add(syEntityreporting);
+                        }
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+                }
+                return entityReportingsList;
+            }
+            catch (Exception)
+            {
+                return entityReportingsList;
+            }
+
+        }
+
+
+        /// <summary>
+        /// Ajoute une unite de reporting
+        /// </summary>
+        /// <param name="connection">Finance connection</param>
+        /// <param name="reporting">SyReporting</param>
+        /// <param name="ownerSite">ownerSite</param>
+        /// <param name="entity">Unite</param>
+        /// <returns>Statut de l'execution</returns>
+        public static bool AddEntityReporting(FinanceConnection connection, SyReporting reporting, string ownerSite, string entity)
+        {
+            try
+            {
+                ICtObjectManager entityReportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerHelper.ManagerFinancialConsolidation.EntityReporting, connection.Session2);
+                ICtObjectManager recipientManager = ManagerHelper.GetObjectManagerClient((int)ManagerHelper.ManagerFinancialConsolidation.Recipient, connection.Session2);
+                ICtDimensionManager dimanager = (ICtDimensionManager)ManagerHelper.GetObjectManagerClient((int)ManagerHelper.ManagerFinancialConsolidation.Dimension, connection.Session2);
+
+                //Creation des liasses vides pour le reporting
+                ICtEntityReporting pEntityReporting = (ICtEntityReporting)entityReportingManager.NewObject(1);
+
+                ICtOqlFactoryFacade pOqlFactory = new CtOqlFactoryFacadeClass();
+                ICtOqlProperty oqlProp = (ICtOqlProperty)pOqlFactory.Prop((int)ct_object_property.CT_NAME_PROP);
+                ICtOqlBooleanExpr pFilter = pOqlFactory.Equal(oqlProp, pOqlFactory.Value(ownerSite));
+                ICtGenCollection pColl = recipientManager.GetObjects(pFilter, ACCESSFLAGS.OM_READ, (int)ALL_CAT.MANDATORY, null);
+
+                ICtRecipient pRecipient = (ICtRecipient)pColl.GetAt(1);
+
+                //Unite
+                ICtDimension dimEntity = dimanager.get_Dimension((int)ct_dimension.DIM_ENTITY);
+                ICtRefValue entityValue = dimEntity.get_RefValueFromName(entity, 0);
+
+                pEntityReporting.Phase = reporting.Reporting.Phase;
+                pEntityReporting.UpdatePeriod = reporting.Reporting.UpdatePeriod;
+                pEntityReporting.Entity = entityValue;
+                pEntityReporting.Reporting = reporting.Reporting;
+                pEntityReporting.InputRecipient = pRecipient;
+                pEntityReporting.PublishingRecipient = pRecipient;
+
+                entityReportingManager.SaveObject(pEntityReporting);
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(pEntityReporting);
+
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+
+
+
+        public static bool GeneratePacks(FinanceConnection connection, int reportingID, int reportingUnitID)
+        {
+            ICtEntityReportingManager entityReportingManager = (ICtEntityReportingManager)ManagerHelper.GetObjectManagerClient((int)CTREPORTINGMODULELib.CtReportingManagers.CT_ENTITY_REPORTING_MANAGER, connection.Session2, true);
+            ICtObjectManager objMan = (ICtObjectManager)entityReportingManager;
+            SyReferenceTable referenceTable = ReferenceTableHelper.ReferenceTable(connection, "ENTITY", -1);
+
+            ICtGenCollection genCol = objMan.NewCollection();
+
+            SyReporting reporting = ReportingHelper.GetReporting(connection, reportingID);
+
+            if (reporting == null) return false;
+            foreach (SyReferenceValue refValue in referenceTable.ReferenceValues)
+            {
+                try
+                {
+                    if (refValue.ID == reportingUnitID)
+                    {
+                        genCol.Add(entityReportingManager.get_EntityReporting(reporting.Reporting.Phase, reporting.Reporting.UpdatePeriod, refValue.refValue));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            if (genCol.Count == 0) return false;
+
+            try
+            {
+                entityReportingManager.GeneratePackModels(genCol);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+            return true;
+        }
+
+        public static bool GeneratePack(FinanceConnection connection, string phase, string period, string unite)
+        {
+            ICtEntityReportingManager entityReportingManager = (ICtEntityReportingManager)ManagerHelper.GetObjectManagerClient((int)CTREPORTINGMODULELib.CtReportingManagers.CT_ENTITY_REPORTING_MANAGER, connection.Session2, true);
+            ICtDimensionManager dimanager = (ICtDimensionManager)ManagerHelper.GetObjectManagerClient((int)ManagerHelper.ManagerFinancialConsolidation.Dimension, connection.Session2);
+
+            //Phase
+            ICtDimension dimPhase = dimanager.get_Dimension((int)ct_dimension.DIM_PHASE);
+            ICtRefValue phaseValue = dimPhase.get_RefValueFromName(phase, 0);
+
+            //Exercice
+            ICtDimension dimPeriod = dimanager.get_Dimension((int)ct_dimension.DIM_UPDPER);
+            ICtRefValue periodValue = dimPeriod.get_RefValueFromName(period, 0);
+
+            //Unite
+            ICtDimension dimEntity = dimanager.get_Dimension((int)ct_dimension.DIM_ENTITY);
+            ICtRefValue entityValue = dimEntity.get_RefValueFromName(unite, 0);
+
+            ICtObjectManager objMan = (ICtObjectManager)entityReportingManager;
+            ICtGenCollection genCol = objMan.NewCollection();
+            genCol.Add(entityReportingManager.get_EntityReporting(phaseValue, periodValue, entityValue));
+
+            try
+            {
+                entityReportingManager.GeneratePackModels(genCol);
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
+}
+
+
+namespace EPMHelper.BFC.Util
+{
+    public class ReportingHelper : ManagerHelper
+    {
+        /// <summary>
+        /// Fonction qui teste l'existance d'un reporting
+        /// </summary>
+        /// <param name="reportingID">Id du reporting</param>
+        /// <param name="connection">Finance connection</param>
+        /// <returns>bool : Existance du reporting</returns>
+        public static bool ReportingExists(string reportingID, FinanceConnection connection)
+        {
+            ICtObjectManager reportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.Reporting, connection.Session2);
+            foreach (ICtReporting reporting in reportingManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+            {
+                if (reporting.Name.Equals(reportingID, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+
+        /// <summary>
+        /// Fonction qui retourne un reporting
+        /// </summary>
+        /// <param name="connection">Finance connection</param>
+        /// <param name="phase">Category</param>
+        /// <param name="period">Periode</param>
+        /// <returns>SyReporting : Objet reporting</returns>
+        public static SyReporting GetReporting(FinanceConnection connection, string phase, string period)
+        {
+            ICtObjectManager reportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.Reporting, connection.Session2);
+            foreach (ICtReporting reporting in reportingManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+            {
+                if (reporting.Name.Equals(phase + " - " + period, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return new SyReporting(reporting);
+                }
+            }
+            return new SyReporting();
+        }
+
+        /// <summary>
+        /// Fonction qui retourne un reporting
+        /// </summary>
+        /// <param name="connection">Financial Consolidation</param>
+        /// <param name="reportingID">Id du reporting</param>
+        /// <returns>SyReporting : Objet reporting</returns>
+        public static SyReporting GetReporting(FinanceConnection connection, int reportingID)
+        {
+            ICtObjectManager reportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.Reporting, connection.Session2);
+            foreach (ICtReporting reporting in reportingManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+            {
+                if (reporting.ID == reportingID)
+                {
+                    return new SyReporting(reporting);
+                }
+            }
+            return new SyReporting();
+        }
+
+        /// <summary>
+        /// retourne la liste des repotings 
+        /// </summary>
+        /// <param name="connection">FinanceConnection connection</param>
+        /// <returns>List<SyReporting> : Liste des reportings</returns>
+        public static List<SyReporting> GetReportings(FinanceConnection connection)
+        {
+            List<SyReporting> reportingList = new List<SyReporting>();
+            try
+            {
+                ICtObjectManager reportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.Reporting, connection.Session2);
+                foreach (ICtReporting reporting in reportingManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+                {
+                    try
+                    {
+                        reportingList.Add(new SyReporting(reporting));
+                    }
+                    catch (Exception ex)
+                    {
+                        CoreMonitoringEPM.Error(string.Format("ERROR : {0}", System.Reflection.MethodBase.GetCurrentMethod().Name), ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                CoreMonitoringEPM.Error(string.Format("ERROR : {0}", System.Reflection.MethodBase.GetCurrentMethod().Name), ex);
+            }
+            return reportingList;
+        }
+
+
+
+        public static bool ChangeReporting(FinanceConnection connection, string reporting, string frameworkVersion, string comment = null, string ownerGroup = null,
+                                           SyDescLanguage descLanguage = null, DateTime? startDate = null, DateTime? endDate = null, DateTime? packPubDeadLine = null,
+                                           bool authorizeAdvPub = false, int integAfterPub = 0, int ctrlLvlAfterPub = 0, int integrAfterRecep = 0, int ctrlLvlAfterRecep = 0)
+        {
+            ICtReporting rtg = null;
+            ICtObjectManager reportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.Reporting, connection.Session2);
+            foreach (ICtReporting ictreporting in reportingManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+            {
+                if (ictreporting.Name == reporting)
+                {
+                    rtg = ictreporting;
+                }
+            }
+
+            if (rtg == null)
+            {
+                //Reporting introuvable
+                return false;
+            }
+            rtg.AccessMode = ACCESSFLAGS.OM_WRITE;
+            rtg.Framework.AccessMode = ACCESSFLAGS.OM_WRITE;
+            rtg.FrameworkVersion.AccessMode = ACCESSFLAGS.OM_WRITE;
+            if (frameworkVersion != null)
+            {
+                ICtRefTableManager refTableManager = (ICtRefTableManager)ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.RefTable, connection.Session2);
+                ICtRefTable refTableFrameworkVersion = refTableManager.get_RefTable((int)ct_reftable.REFTABLE_FRAMEWORKVERSION);
+                ICtRefValue pFrmWrkVersion = refTableFrameworkVersion.get_RefValueFromName(frameworkVersion, 0);
+                if (pFrmWrkVersion != null)
+                {
+                    // Chargement du référentiel
+                    IRefObjRef pFramework = null;
+                    try
+                    {
+                        ICtFrameworkManager pFrameWorkMgr = (ICtFrameworkManager)ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.CategoryBuilder, connection.Session2);
+                        pFramework = pFrameWorkMgr.get_FrameworkFromPhaseVersion(rtg.Phase, pFrmWrkVersion);
+                        if (pFramework == null)
+                        {
+                            //Le referentiel n'existe pas 
+                            return false;
+                        }
+                        else
+                        {
+                            //TODO
+                            //rtg.Framework.AccessMode = ACCESSFLAGS.OM_WRITE;
+                            //rtg.FrameworkVersion.AccessMode = ACCESSFLAGS.OM_WRITE;
+                            rtg.Framework = pFramework;
+                            //rtg.set_RelVal((int)CtReportingRelationships.CT_REL_REPORTING_FRAMEWORK_VERSION,pFrmWrkVersion);
+
+                            //CT_REL_REPORTING_FRAMEWORK_VERSION = -523287,
+
+                            rtg.FrameworkVersion = pFrmWrkVersion;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        CoreMonitoringEPM.Warning(string.Format("ERROR : {0}", System.Reflection.MethodBase.GetCurrentMethod().Name), ex);
+                        return false;
+                    }
+                }
+            }
+
+            //Description des languages
+
+            if (descLanguage != null)
+            {
+                rtg.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_1, descLanguage.LangS_1);
+                rtg.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_1, descLanguage.LangL_1);
+                rtg.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_2, descLanguage.LangS_2);
+                rtg.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_2, descLanguage.LangL_2);
+                rtg.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_3, descLanguage.LangS_3);
+                rtg.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_3, descLanguage.LangL_3);
+                rtg.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_4, descLanguage.LangS_4);
+                rtg.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_4, descLanguage.LangL_4);
+                rtg.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_5, descLanguage.LangS_5);
+                rtg.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_5, descLanguage.LangL_5);
+                rtg.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_6, descLanguage.LangS_6);
+                rtg.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_6, descLanguage.LangL_6);
+            }
+
+            if (comment != null)
+            {
+                rtg.set_Desc(ct_desctype.ctdesc_comment, lang_t.lang_1, comment);
+            }
+
+            if (startDate.HasValue)
+            {
+                rtg.ReportingStartDate = (DateTime)startDate;
+            }
+            if (endDate.HasValue)
+            {
+                rtg.ReportingEndDate = (DateTime)endDate;
+            }
+
+            if (packPubDeadLine.HasValue)
+            {
+                rtg.set_PropVal((int)CtReportingProperties.CT_PROP_PACK_PUBLISHING_CUTOFF_DATE, (DateTime)packPubDeadLine);
+            }
+
+            if (authorizeAdvPub)
+            {
+                SByte aep = 1;
+                rtg.set_PropVal((int)CtReportingProperties.CT_PROP_ALLOW_EARLY_PUBLISHING, aep);
+            }
+            else
+            {
+                SByte aep = 0;
+                rtg.set_PropVal((int)CtReportingProperties.CT_PROP_ALLOW_EARLY_PUBLISHING, aep);
+            }
+
+            integAfterPub = (int)(integAfterPub * Math.Pow(2, 16));
+            rtg.set_PropVal((int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_PUB, integAfterPub);
+            integrAfterRecep = (int)(integrAfterRecep * Math.Pow(2, 16));
+            rtg.set_PropVal((int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_TRANSFER, integrAfterRecep);
+
+            if (ownerGroup != null)
+            {
+                SyWorkGroup workgroup = WorkGroupHelper.WorkGroup(connection, ownerGroup, EntitiesHelper.ObjectProperty.CT_NAME_PROP);
+                if (workgroup != null)
+                {
+                    rtg.OwnerWorkgroup = workgroup.ID;
+                }
+            }
+
+            //TODO Level control bug
+
+
+            //if (ctrlLvlAfterPub != 0)
+            //{
+            //    SyLevel level = CategoryBuilderLevelHelper.GetCategoryBuilderLevel(connection,(short) ctrlLvlAfterPub);
+            //    newReporting.set_RelVal((int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_PUB, level.Level);
+            //}
+
+            //if (ctrlLvlAfterRecep != 0)
+            //{
+            //    SyLevel level = CategoryBuilderLevelHelper.GetCategoryBuilderLevel(connection, (short)ctrlLvlAfterRecep);
+            //    newReporting.set_RelVal((int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_TRANSFER, level.Level);
+            //}
+
+            // Sauvegarde
+            try
+            {
+
+                reportingManager.SaveObject(rtg);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CoreMonitoringEPM.Warning(string.Format("ERROR : {0}", System.Reflection.MethodBase.GetCurrentMethod().Name), ex);
+                //Erreur sauvegarde du reporting
+                return false;
+            }
+
+        }
+
+
+        public static bool CreateReporting(FinanceConnection connection, string phase, string updatePeriod, string frameworkVersion, string comment = null, string ownerGroup = null,
+                                           SyDescLanguage descLanguage = null, DateTime? startDate = null, DateTime? endDate = null, DateTime? packPubDeadLine = null,
+                                           bool authorizeAdvPub = false, int integAfterPub = 0, int ctrlLvlAfterPub = 0, int integrAfterRecep = 0, int ctrlLvlAfterRecep = 0,
+                                           string dataEntryRestriction = null, string windowsAndInternetFolder = null, string internetSpecificFolder = null, int packCtrlLevel = 0)
+        {
+            SyReporting reporting = new SyReporting();
+            try
+            {
+                ICtDimensionManager dimanager = (ICtDimensionManager)ManagerHelper.GetObjectManagerClient((int)ManagerHelper.ManagerFinancialConsolidation.Dimension, connection.Session2);
+                //Phase
+                ICtDimension dimPhase = dimanager.get_Dimension((int)ct_dimension.DIM_PHASE);
+                ICtRefValue phaseValue = dimPhase.get_RefValueFromName(phase, 0);
+
+                //Exercice
+                ICtDimension dimPeriod = dimanager.get_Dimension((int)ct_dimension.DIM_UPDPER);
+                ICtRefValue periodValue = dimPeriod.get_RefValueFromName(updatePeriod, 0);
+
+                //Remontée
+                ICtObjectManager reportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.Reporting, connection.Session2);
+                ICtReporting newReporting = (ICtReporting)reportingManager.NewObject(1);
+
+
+                ICtRefTableManager refTableManager = (ICtRefTableManager)ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.RefTable, connection.Session2);
+                ICtRefTable refTableFrameworkVersion = refTableManager.get_RefTable((int)ct_reftable.REFTABLE_FRAMEWORKVERSION);
+                ICtRefValue pFrmWrkVersion = refTableFrameworkVersion.get_RefValueFromName(frameworkVersion, 0);
+
+                // Chargement du référentiel
+                IRefObjRef pFramework = null;
+                try
+                {
+                    ICtFrameworkManager pFrameWorkMgr = (ICtFrameworkManager)ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.CategoryBuilder, connection.Session2);
+                    pFramework = pFrameWorkMgr.get_FrameworkFromPhaseVersion(phaseValue, pFrmWrkVersion);
+                    if (pFramework == null)
+                    {
+                        //Le referentiel n'existe pas 
+                        return false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    CoreMonitoringEPM.Warning(string.Format("ERROR : {0}", System.Reflection.MethodBase.GetCurrentMethod().Name), ex);
+                    //Impossible de creer le reporting
+                    return false;
+                }
+
+
+                //Description des languages
+
+                if (descLanguage != null)
+                {
+                    newReporting.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_1, descLanguage.LangS_1);
+                    newReporting.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_1, descLanguage.LangL_1);
+                    newReporting.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_2, descLanguage.LangS_2);
+                    newReporting.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_2, descLanguage.LangL_2);
+                    newReporting.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_3, descLanguage.LangS_3);
+                    newReporting.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_3, descLanguage.LangL_3);
+                    newReporting.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_4, descLanguage.LangS_4);
+                    newReporting.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_4, descLanguage.LangL_4);
+                    newReporting.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_5, descLanguage.LangS_5);
+                    newReporting.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_5, descLanguage.LangL_5);
+                    newReporting.set_Desc(ct_desctype.ctdesc_short, lang_t.lang_6, descLanguage.LangS_6);
+                    newReporting.set_Desc(ct_desctype.ctdesc_long, lang_t.lang_6, descLanguage.LangL_6);
+                }
+
+                if (comment != null)
+                {
+                    newReporting.set_Desc(ct_desctype.ctdesc_comment, lang_t.lang_1, comment);
+                }
+
+                //dates
+                if (startDate.HasValue)
+                {
+                    newReporting.ReportingStartDate = (DateTime)startDate;
+                }
+                if (endDate.HasValue)
+                {
+                    newReporting.ReportingEndDate = (DateTime)endDate;
+                }
+
+                if (packPubDeadLine.HasValue)
+                {
+                    newReporting.set_PropVal((int)CtReportingProperties.CT_PROP_PACK_PUBLISHING_CUTOFF_DATE, (DateTime)packPubDeadLine);
+                }
+
+                if (authorizeAdvPub)
+                {
+                    SByte aep = 1;
+                    newReporting.set_PropVal((int)CtReportingProperties.CT_PROP_ALLOW_EARLY_PUBLISHING, aep);
+                }
+
+                integAfterPub = (int)(integAfterPub * Math.Pow(2, 16));
+                newReporting.set_PropVal((int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_PUB, integAfterPub);
+                integrAfterRecep = (int)(integrAfterRecep * Math.Pow(2, 16));
+                newReporting.set_PropVal((int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_TRANSFER, integrAfterRecep);
+
+                if (ownerGroup != null)
+                {
+                    SyWorkGroup workgroup = WorkGroupHelper.WorkGroup(connection, ownerGroup, EntitiesHelper.ObjectProperty.CT_NAME_PROP);
+                    if (workgroup != null)
+                    {
+                        newReporting.OwnerWorkgroup = workgroup.ID;
+                    }
+                }
+
+                if (dataEntryRestriction != null)
+                {
+                    ICtRestriction res = null;
+                    ICtObjectManager restrictionManager = (ICtObjectManager)ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.InputRestriction, connection.Session2);
+                    foreach (ICtRestriction restrict in restrictionManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+                    {
+                        if (restrict.Name == dataEntryRestriction)
+                        {
+                            res = restrict;
+                            break;
+                        }
+                    }
+
+                    if (res != null)
+                    {
+                        newReporting.set_RelVal((int)CtReportingRelationships.CT_REL_REPORTING_INPUT_RESTRICTION, res);
+                    }
+
+                }
+
+                //TODO section pach surement a activer pour prise en compte
+
+                //if (windowsAndInternetFolder != null || internetSpecificFolder != null)
+                //{
+                //    ICtObjectManager adressBookManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.Folder, connection.Session2);
+                //    foreach (ICtBookFolder adressBook in adressBookManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+                //    {
+                //        if (windowsAndInternetFolder != null && adressBook.Name == windowsAndInternetFolder)
+                //        {
+                //            newReporting.set_RelVal((int)CtReportingRelationships.CT_REL_REPORTING_WINDOWS_INPUT_FOLDER, adressBook);
+                //        }
+
+                //        if (internetSpecificFolder != null && adressBook.Name == internetSpecificFolder)
+                //        {
+                //            newReporting.set_RelVal((int)CtReportingRelationships.CT_REL_REPORTING_INTERNET_INPUT_FOLDER, adressBook);
+                //        }
+                //    }
+                //}
+
+                //TODO a test meme bug
+                //if (packCtrlLevel != 0)
+                //{
+                //    SyLevel level = CategoryBuilderLevelHelper.GetCategoryBuilderLevel(connection, (short)packCtrlLevel);
+                //    newReporting.set_RelVal((int)CtReportingRelationships.CT_REL_REPORTING_CONTROL_LEVEL, level.Level);
+                //}             
+
+                //TODO Level control bug
+
+                //if (ctrlLvlAfterPub != 0)
+                //{
+                //    SyLevel level = CategoryBuilderLevelHelper.GetCategoryBuilderLevel(connection,(short) ctrlLvlAfterPub);
+                //    newReporting.set_RelVal((int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_PUB, level.Level);
+                //}
+
+                //if (ctrlLvlAfterRecep != 0)
+                //{
+                //    SyLevel level = CategoryBuilderLevelHelper.GetCategoryBuilderLevel(connection, (short)ctrlLvlAfterRecep);
+                //    newReporting.set_RelVal((int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_TRANSFER, level.Level);
+                //}
+
+                // Propriétés du Reporting
+                newReporting.Phase = phaseValue;
+                newReporting.UpdatePeriod = periodValue;
+                newReporting.Framework = pFramework;
+                newReporting.FrameworkVersion = pFrmWrkVersion;
+
+                // Sauvegarde
+                try
+                {
+                    reportingManager.SaveObject(newReporting);
+                }
+                catch (Exception ex)
+                {
+                    CoreMonitoringEPM.Warning(string.Format("ERROR : {0}", System.Reflection.MethodBase.GetCurrentMethod().Name), ex);
+                    //Erreur sauvegarde du reporting
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                CoreMonitoringEPM.Warning(string.Format("ERROR : {0}", System.Reflection.MethodBase.GetCurrentMethod().Name), ex);
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Fonction qui duplique un reporting et ses liasses associées
+        /// </summary>
+        /// <param name="connection">Finance Connection</param>
+        /// <param name="reportingToDuplicateName">Nom du reporting a dupliquer</param>
+        /// <param name="phase">Phase</param>
+        /// <param name="updatePeriod">Period</param>
+        /// <param name="frameworkVersion">Version du framework</param>
+        /// <returns>Statut de l'execution</returns>
+        public static bool DuplicateReporting(FinanceConnection connection, string reportingToDuplicateName, string phase, string updatePeriod, string frameworkVersion)
+        {
+            ICtObjectManager reportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.Reporting, connection.Session2);
+            ICtReporting reportingToDuplicate = null;
+            foreach (ICtReporting reporting in reportingManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+            {
+                if (reporting.Name.Equals(reportingToDuplicateName, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    reportingToDuplicate = reporting;
+                }
+            }
+
+            if (reportingToDuplicate == null)
+            {
+                //Reporting Not Found 
+                return false;
+            }
+
+
+
+            ICtReporting newReporting = (ICtReporting)reportingManager.NewObject(1);
+
+            ICtDimensionManager dimanager = (ICtDimensionManager)ManagerHelper.GetObjectManagerClient((int)ManagerHelper.ManagerFinancialConsolidation.Dimension, connection.Session2);
+
+            //Phase
+            ICtDimension dimPhase = dimanager.get_Dimension((int)ct_dimension.DIM_PHASE);
+            ICtRefValue phaseValue = dimPhase.get_RefValueFromName(phase, 0);
+
+            //Exercice
+            ICtDimension dimPeriod = dimanager.get_Dimension((int)ct_dimension.DIM_UPDPER);
+            ICtRefValue periodValue = dimPeriod.get_RefValueFromName(updatePeriod, 0);
+
+            ICtRefTableManager refTableManager = (ICtRefTableManager)ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.RefTable, connection.Session2);
+            ICtRefTable refTableFrameworkVersion = refTableManager.get_RefTable((int)ct_reftable.REFTABLE_FRAMEWORKVERSION);
+            ICtRefValue pFrmWrkVersion = refTableFrameworkVersion.get_RefValueFromName(frameworkVersion, 0);
+
+            // Chargement du référentiel
+            IRefObjRef pFramework = null;
+            try
+            {
+                ICtFrameworkManager pFrameWorkMgr = (ICtFrameworkManager)ManagerHelper.GetObjectManagerClient((int)ManagerFinancialConsolidation.CategoryBuilder, connection.Session2);
+                pFramework = pFrameWorkMgr.get_FrameworkFromPhaseVersion(phaseValue, pFrmWrkVersion);
+                if (pFramework == null)
+                {
+                    //Le referentiel n'existe pas 
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                CoreMonitoringEPM.Warning(string.Format("ERROR : {0}", System.Reflection.MethodBase.GetCurrentMethod().Name), ex);
+                //Impossible de creer le reporting
+                return false;
+            }
+
+            // Propriétés du Reporting
+
+            newReporting.Phase = phaseValue;
+            newReporting.UpdatePeriod = periodValue;
+            newReporting.Framework = pFramework;
+            newReporting.FrameworkVersion = pFrmWrkVersion;
+            // Sauvegarde
+            try
+            {
+                reportingManager.SaveObject(newReporting);
+            }
+            catch (Exception ex)
+            {
+                CoreMonitoringEPM.Warning(string.Format("ERROR : {0}", System.Reflection.MethodBase.GetCurrentMethod().Name), ex);
+                //Erreur sauvegarde du reporting
+                return false;
+            }
+
+            ICtObjectManager entityReportingManager = ManagerHelper.GetObjectManagerClient((int)ManagerHelper.ManagerFinancialConsolidation.EntityReporting, connection.Session2);
+            ICtObjectManager recipientManager = ManagerHelper.GetObjectManagerClient((int)ManagerHelper.ManagerFinancialConsolidation.Recipient, connection.Session2);
+
+            //Creation des liasses vides pour le reporting
+            foreach (ICtEntityReporting entityReporting in reportingToDuplicate.RelatedEntityReportingCollection)
+            {
+                ICtEntityReporting pEntityReporting = (ICtEntityReporting)entityReportingManager.NewObject(1);
+                pEntityReporting.Phase = phaseValue;
+                pEntityReporting.UpdatePeriod = periodValue;
+                pEntityReporting.Entity = entityReporting.Entity;
+                pEntityReporting.Reporting = newReporting;
+                pEntityReporting.InputRecipient = entityReporting.InputRecipient;
+                pEntityReporting.PublishingRecipient = entityReporting.PublishingRecipient;
+                entityReportingManager.SaveObject(pEntityReporting);
+            }
+
+            return true;
+
+        }
+
+    }
+}

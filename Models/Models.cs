@@ -1,5 +1,19 @@
-﻿using System;
+﻿#region Copyright
+// ----------------------- IMPORTANT - READ CAREFULLY: COPYRIGHT NOTICE -------------------
+// -- THIS SOFTWARE IS THE PROPERTY OF CTStation S.A.S. IN ANY COUNTRY                   --
+// -- (WWW.CTSTATION.NET). ANY COPY, CHANGE OR DERIVATIVE WORK                           --
+// -- IS SUBJECT TO CTSTATION S.A.S.’S PRIOR WRITTEN CONSENT.                            --
+// -- THIS SOFTWARE IS REGISTERED TO THE FRENCH ANTI-PIRACY AGENCY (APP).                --
+// -- COPYRIGHT 2020-01 CTSTATTION S.A.S. – ALL RIGHTS RESERVED.                         --
+// ----------------------------------------------------------------------------------------
+#endregion
+
+// Facades for FC objects
+//          Restricted to the needs of ReportingFactory
+
+using System;
 using System.Collections.Generic;
+using log4net;
 using CTREPORTINGMODULELib;
 using CTKREFLib;
 using CTCLIENTSERVERLib;
@@ -8,16 +22,57 @@ using CTSWeb.Util;
 
 namespace CTSWeb.Models
 {
+
+
+    public class NamedObject
+    {
+        public int ID { get; }
+        public string Name { get; }
+
+        public NamedObject(int viID, string viName)
+        {
+            ID = viID;
+            Name = viName;
+        }
+    }
+
+    public class Descriptions
+    {
+        private static readonly ILog _log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        private readonly ICtObjectBase _FCObject;
+        private readonly Context _Session;
+
+        public Descriptions(ICtObjectBase roFCObject, Context roSession)
+        {
+            _FCObject = roFCObject;
+            _Session = roSession;
+        }
+
+        public string LDesc { get => ""; }
+
+        public string Get(CTCLIENTSERVERLib.ct_desctype viType, CTCLIENTSERVERLib.lang_t viLanguage)
+        {
+            try
+            {
+                return (string) _FCObject.PropVal[0];
+            }
+            catch (Exception e)
+            {
+                _log.Warn($"Error getting description {viType} in language {viLanguage} for object {_FCObject.ToString()}", e);
+                return "";
+            }
+        }
+
+    }
+
     public class Framework
     {
-        public List<ControlsSets> ControlSets;
-        public List<Control> Controls;
-        public List<ControlSubSets> ControlSubSets;
+       // public List<ControlLevel> ControlLevels { get; }
 
-        public Framework(IRefObjRef framework)
+        public Framework(IRefObjRef roFramework)
         {
-            ControlSets = new List<ControlsSets>();
-            Controls = new List<Control>();
+            // ControlLevels = new List<ControlLevel>();
 
             //foreach (IRefCtrlFamily obj in framework.CtrlFamilyList)
             //{
@@ -33,11 +88,9 @@ namespace CTSWeb.Models
             //{
             //    ControlSets.Add(new ControlsSets(obj));
             //}
-
-
         }
 
-        public bool TryGet(string rsPhaseName, string rsVersionName, FCSession roFCSession, out IRefObjRef roRef)
+        public bool TryGet(string rsPhaseName, string rsVersionName, Context roFCSession, out IRefObjRef roRef)
         {
             bool bFound = false;
 
@@ -141,6 +194,8 @@ namespace CTSWeb.Models
             Expression = control.Expr;
         }
     }
+
+
     public class ExchangeRate
     {
         public int ID;
