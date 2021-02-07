@@ -24,48 +24,6 @@ namespace CTSWeb.Models
 {
 
 
-    public class NamedObject
-    {
-        public int ID { get; }
-        public string Name { get; }
-
-        public NamedObject(int viID, string viName)
-        {
-            ID = viID;
-            Name = viName;
-        }
-    }
-
-    public class Descriptions
-    {
-        private static readonly ILog _log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
-        private readonly ICtObjectBase _FCObject;
-        private readonly Context _Session;
-
-        public Descriptions(ICtObjectBase roFCObject, Context roSession)
-        {
-            _FCObject = roFCObject;
-            _Session = roSession;
-        }
-
-        public string LDesc { get => ""; }
-
-        public string Get(CTCLIENTSERVERLib.ct_desctype viType, CTCLIENTSERVERLib.lang_t viLanguage)
-        {
-            try
-            {
-                return (string) _FCObject.PropVal[0];
-            }
-            catch (Exception e)
-            {
-                _log.Warn($"Error getting description {viType} in language {viLanguage} for object {_FCObject.ToString()}", e);
-                return "";
-            }
-        }
-
-    }
-
     public class Framework
     {
        // public List<ControlLevel> ControlLevels { get; }

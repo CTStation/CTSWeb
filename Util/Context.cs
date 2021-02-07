@@ -78,13 +78,14 @@ namespace CTSWeb.Util
         #endregion
 
         private readonly PrConnectionInfo _oInfo;
-        private readonly Language _oLanguage;
 
-        public CultureInfo Culture { get => _oLanguage.Culture; }
+        public readonly Language Language;
 
-        public CTCLIENTSERVERLib.lang_t WorkingLanguage { get => _oLanguage.WorkingLanguage;  }
+        public CultureInfo Culture { get => Language.Culture; }
 
-        public List<string> GetActiveLanguages() => _oLanguage.GetActiveLanguages();
+        public CTCLIENTSERVERLib.lang_t WorkingLanguage { get => Language.WorkingLanguage;  }
+
+        public List<string> GetActiveLanguages() => Language.GetActiveLanguages();
 
         public ConfigClass Config { get; }
 
@@ -112,20 +113,40 @@ namespace CTSWeb.Util
             }
 
             string sWorkingLanguageISO = roContext.Request.Headers.Get("P007.ctstation.fr");
-            _oLanguage = new Language(Config, sWorkingLanguageISO);
+            string sModifyedLanguagesISO = roContext.Request.Headers.Get("P008.ctstation.fr");
+            Language = new Language(Config, sWorkingLanguageISO, sModifyedLanguagesISO);
+            Config.Session.UserLanguage = Language.WorkingLanguage;
         }
 
-        // Manager functions
-        public List<tObject> GetAll<tObject>() where tObject : ManagedObject, new()
+        # region  Manager functions
+        
+        public List<tObject> GetAll<tObject>()      where tObject : ManagedObject, new() => Manager.GetAll<tObject>(this);
+
+        public tObject Get<tObject>(int viID)       where tObject : ManagedObject, new() => Manager.Get<tObject>(this, viID);
+        public tObject Get<tObject>(string vsName)  where tObject : ManagedObject, new() => Manager.Get<tObject>(this, vsName);
+
+        public bool Exists<tObject>(int viID)       where tObject : ManagedObject, new() => Manager.Exists<tObject>(Config, viID);
+        public bool Exists<tObject>(string vsName)  where tObject : ManagedObject, new() => Manager.Exists<tObject>(Config, vsName);
+
+        public void Save<tObject>(tObject voObj)    where tObject : ManagedObject, new() => Manager.Save<tObject>(Config, voObj);
+
+        public void LoadFromFC<tObject>(tObject roObject, dynamic roFCObject) where tObject : ManagedObject, new()
         {
-            return Manager.GetAll<tObject>(Config);
+            Manager.LoadFromFC<tObject>(roObject, roFCObject, Language);
         }
+
+        #endregion
+
 
         // This is called by the using() pattern, as the class implements iDisposible
         public void Dispose()
         {
             if (!(Config is null) && !(_oInfo is null))
             {
+                // Get read of all the facade objects created, and their COM objects
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+
                 // Returns the connection to the pool of available connections
                 S_oCache.Push(_oInfo, Config);
             }

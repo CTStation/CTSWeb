@@ -124,13 +124,15 @@ namespace CTSWeb.Util
             }
             return (iWorkingLanguage, sActiveWorkingLanguageISO);
         }
-#endregion
+        #endregion
 
-        public lang_t WorkingLanguage { get ; }
-        
-        public CultureInfo Culture { get ;  }
+        public readonly lang_t WorkingLanguage;
 
-        public Language(ConfigClass roConfig, string vsRequestedWorkingLanguageISO)
+        public readonly CultureInfo Culture;
+
+        public readonly List<(lang_t, string)> SupportedLanguages;
+
+        public Language(ConfigClass roConfig, string vsRequestedWorkingLanguageISO, string vsRequestedSupportedLanguagesISO)
         {
             string sActiveWorkingLanguageISO;
 
@@ -143,6 +145,19 @@ namespace CTSWeb.Util
             {
                 _oLog.Debug(e.Message);
                 Culture = new CultureInfo("en-US");
+            }
+
+            SupportedLanguages = new List<(lang_t, string)>();
+            if (vsRequestedSupportedLanguagesISO != null)
+            {
+                lang_t iLang;
+                foreach (string s in vsRequestedSupportedLanguagesISO.Split(new char[] { ' ', ',', ';' })){
+                    if (_oISO2Lang.TryGetValue(s, out iLang) && _oActiveLanguages.Contains(iLang)) SupportedLanguages.Add((iLang, s));
+                }
+            } 
+            else
+            {
+                SupportedLanguages.Add((WorkingLanguage, sActiveWorkingLanguageISO));
             }
         }
 

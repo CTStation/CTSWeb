@@ -26,32 +26,18 @@ using CTSWeb.Util;
 namespace CTSWeb.Models
 {
 
-    public class ReportingModel : ManagedObject
+    public class Reporting : ManagedObjectWithDescAndSecurity // Inherits ID and Name
     {
-        public int ID;
-        public string Name;
+        static Reporting() 
+        {
+            // Comment seems to bug the second time it's called
+            Manager.Register<Reporting>((int)CtReportingManagers.CT_REPORTING_MANAGER, (int)(TranslatableField.ShortDesc | TranslatableField.LongDesc));
+        }
+
+        public string Phase;
         public string UpdatePeriod;
         public string FrameworkVersion;
-        public int Type;
-        public string TypeName;
-        public string TypeDesc;
-        public bool Dirty;
-        public bool IsNew;
-        public bool IsReadOnly;
-        public int LoadedCategoryMask;
-        public int ScalarDirtyCategoryMask;
-        public int Categories;
-        public int Icon;
-        public int LargeIcon;
-        public int ImplementationAddress;
 
-        public int OwnerSite;
-        public int OwnerWorkgroup;
-        public int VisibilityMode;
-        public DateTime CreationDate;
-        public int Author;
-        public DateTime UpdateDate;
-        public int UpdateAuthor;
         public int Status;
         public DateTime ReportingStartDate;
         public DateTime ReportingEndDate;
@@ -63,54 +49,33 @@ namespace CTSWeb.Models
         public List<Period> Periods;
         public uint ReportingModifyComment;
         public DateTime ReportingHierarchyDate;
-        public uint Locked;
         public List<RelatedEntityReportingCollection> RelatedEntityReportingCollection;
 
-        public ReportingModel()
+        public Reporting()
         {
-            // Create empty
-            Dirty = true;
         }
 
-        public override ManagedObject Factory(ICtObjectBase roObj)
+        public override ManagedObject CreateFrom(ICtObjectBase roObj, Language roLang)
         {
-            ReportingModel oNewObj = new ReportingModel();
+            Reporting oNewObj = new Reporting();
+
+            _oLanguage = roLang;
 
             PrReportingModel(oNewObj, (ICtReporting)roObj, false);
             return oNewObj;
         }
 
-        public ReportingModel(ICtReporting reporting, bool details = false)
+        public Reporting(ICtReporting reporting, bool details = false)
         {
             PrReportingModel(this, reporting, details);
         }
 
-        private void PrReportingModel(ReportingModel roObj, ICtReporting reporting, bool details)
-        { 
-            roObj.ID = reporting.ID;
-            roObj.Name = reporting.Name;
-            //reporting.Phase
+        private void PrReportingModel(Reporting roObj, ICtReporting reporting, bool details)
+        {
+            Manager.LoadFromFC<Reporting>(roObj, reporting, _oLanguage);
+            roObj.Phase = reporting.Phase.Name;
             roObj.UpdatePeriod = reporting.UpdatePeriod.Name;
             roObj.FrameworkVersion = reporting.FrameworkVersion.Name;
-            roObj.Type = reporting.Type;
-            roObj.TypeName = reporting.TypeName; ;
-            roObj.TypeDesc = reporting.TypeDesc;
-            roObj.Dirty = reporting.Dirty;
-            roObj.IsNew = reporting.IsNew;
-            roObj.IsReadOnly = reporting.IsReadOnly;
-            roObj.LoadedCategoryMask = reporting.LoadedCategoryMask;
-            roObj.ScalarDirtyCategoryMask = reporting.ScalarDirtyCategoryMask;
-            roObj.Categories = reporting.Categories;
-            roObj.Icon = reporting.Icon;
-            roObj.LargeIcon = reporting.LargeIcon;
-            roObj.ImplementationAddress = reporting.ImplementationAddress;
-            roObj.OwnerSite = reporting.OwnerSite;
-            roObj.OwnerWorkgroup = reporting.OwnerWorkgroup;
-            roObj.VisibilityMode = (int)reporting.VisibilityMode;
-            roObj.CreationDate = reporting.CreationDate;
-            roObj.Author = reporting.Author;
-            roObj.UpdateDate = reporting.UpdateDate;
-            roObj.UpdateAuthor = reporting.UpdateAuthor;
             roObj.Status = (int)reporting.Status;
             roObj.ReportingStartDate = reporting.ReportingStartDate;
             roObj.ReportingEndDate = reporting.ReportingEndDate;
@@ -134,7 +99,6 @@ namespace CTSWeb.Models
                 else
                 {
                     roObj.ExchangeRateType = new ExchangeRateType();
-
                 }
 
                 foreach (ICtEntityReporting reporting1 in reporting.RelatedEntityReportingCollection)
@@ -150,8 +114,6 @@ namespace CTSWeb.Models
                 roObj.ReportingModifyComment = reporting.ReportingModifyComment;
                 roObj.ReportingHierarchyDate = reporting.ReportingHierarchyDate;
             }
-            roObj.Locked = reporting.Locked;
-
         }
 
     }

@@ -73,9 +73,7 @@ namespace CTSWeb.Controllers
         {
             using (Context oSession = new Context(this.HttpContext))
             {
-                return new PrJsonResult(oSession.GetAll<ReportingModel>());
-                ReportingManagerClient oManager = new ReportingManagerClient(oSession.Config);
-                return new PrJsonResult(oManager.GetReportings());
+                return new PrJsonResult(oSession.GetAll<Reporting>());
             }
         }
         );
@@ -85,8 +83,7 @@ namespace CTSWeb.Controllers
         {
             using (Context oSession = new Context(this.HttpContext))
             {
-                ReportingManagerClient oManager = new ReportingManagerClient(oSession.Config);
-                return new PrJsonResult(oManager.GetReporting(id));
+                return new PrJsonResult(oSession.Get<Reporting>(id));
             }
         }
         );
