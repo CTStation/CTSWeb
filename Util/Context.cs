@@ -11,6 +11,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Web;
+using System.Threading;
+using log4net;
 
 namespace CTSWeb.Util
 {
@@ -29,21 +31,27 @@ namespace CTSWeb.Util
 
     public class Context : IDisposable
     {
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         private class PrConnectionInfo
         {
             // Extending Tuple creates a struct, not a class, and reference semantic is needed to use as Key in a Dictionary
             // Thus we need to overload Equal, ==, != and GetHashCode
-            private readonly (string, string, string, string, string) _oInfo;
+
+            // App crashes if a session is reused in another thread, thus add thread ID to the key
+
+            private readonly (string, string, string, string, string, int) _oInfo;
 
             public string BrokerName            { get => _oInfo.Item1; }
             public string DatasourceName        { get => _oInfo.Item2; }
             public string DatasourcePassword    { get => _oInfo.Item3; }
             public string UserName              { get => _oInfo.Item4; }
             public string Password              { get => _oInfo.Item5; }
+            public int    ThreadID              { get => _oInfo.Item6; }
 
             public PrConnectionInfo(string rsBrokerName, string rsDatasourceName, string rsDatasourcePassword, string rsUserName, string rsPassword)
             {
-                _oInfo = (rsBrokerName, rsDatasourceName, rsDatasourcePassword, rsUserName, rsPassword);
+                _oInfo = (rsBrokerName, rsDatasourceName, rsDatasourcePassword, rsUserName, rsPassword, Thread.CurrentThread.ManagedThreadId);
             }
 
             // Reading params in header is not ideal, as queries can be replayed
@@ -56,7 +64,8 @@ namespace CTSWeb.Util
                                 oHead.Get("P002.ctstation.fr"), 
                                 oHead.Get("P003.ctstation.fr"),
                                 oHead.Get("P004.ctstation.fr"),
-                                oHead.Get("P005.ctstation.fr")
+                                oHead.Get("P005.ctstation.fr"),
+                                Thread.CurrentThread.ManagedThreadId
                             );
             }
 
@@ -77,7 +86,7 @@ namespace CTSWeb.Util
                 new TimedCache<PrConnectionInfo, ConfigClass>(ConfigClass.Close);   // Closes unused connections after 5 minutes
         #endregion
 
-        private readonly PrConnectionInfo _oInfo;
+        private readonly PrConnectionInfo _oKey;
 
         public readonly Language Language;
 
@@ -91,25 +100,28 @@ namespace CTSWeb.Util
 
         public Context(HttpContextBase roContext)
         {
-            _oInfo = new PrConnectionInfo(roContext);
+            _oKey = new PrConnectionInfo(roContext);
 
             bool bFoundInCache = false;
-                        while (S_oCache.TryPop(_oInfo, out ConfigClass oConfig))
+            while (S_oCache.TryPop(_oKey, out ConfigClass oConfig))
             {
                 // This test should prevent using a stalled connection
-                if (oConfig.IsActive(_oInfo.BrokerName, _oInfo.DatasourceName, _oInfo.UserName, _oInfo.Password))
+                if (oConfig.IsActive(_oKey.BrokerName, _oKey.DatasourceName, _oKey.UserName, _oKey.Password))
                 {
                     Config = oConfig;
                     bFoundInCache = true;
-
+                    _oLog.Debug($"Reusing {_oKey.BrokerName}_{_oKey.DatasourceName} {_oKey.UserName} in thread {_oKey.ThreadID}");
                     break;
                 }
             }
             if (!bFoundInCache)
             {
                 // Throws exceptions if needed
-                Config = new ConfigClass(_oInfo.BrokerName, _oInfo.DatasourceName, _oInfo.DatasourcePassword, _oInfo.UserName, _oInfo.Password, "");
+                _oLog.Debug($"Opening new config {_oKey.BrokerName}_{_oKey.DatasourceName} {_oKey.UserName} in thread {_oKey.ThreadID}");
+                Config = new ConfigClass(_oKey.BrokerName, _oKey.DatasourceName, _oKey.DatasourcePassword, _oKey.UserName, _oKey.Password, "");
+                _oLog.Debug("Connectong...");
                 Config?.Connect();
+                _oLog.Debug("Connected");
             }
 
             string sWorkingLanguageISO = roContext.Request.Headers.Get("P007.ctstation.fr");
@@ -130,25 +142,21 @@ namespace CTSWeb.Util
 
         public void Save<tObject>(tObject voObj)    where tObject : ManagedObject, new() => Manager.Save<tObject>(Config, voObj);
 
-        public void LoadFromFC<tObject>(tObject roObject, dynamic roFCObject) where tObject : ManagedObject, new()
-        {
-            Manager.LoadFromFC<tObject>(roObject, roFCObject, Language);
-        }
-
         #endregion
 
 
         // This is called by the using() pattern, as the class implements iDisposible
         public void Dispose()
         {
-            if (!(Config is null) && !(_oInfo is null))
+            if (!(Config is null) && !(_oKey is null))
             {
                 // Get read of all the facade objects created, and their COM objects
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
 
                 // Returns the connection to the pool of available connections
-                S_oCache.Push(_oInfo, Config);
+                S_oCache.Push(_oKey, Config);
+                _oLog.Debug($"Returned {_oKey.BrokerName}_{_oKey.DatasourceName} {_oKey.UserName} in thread {_oKey.ThreadID} to the pool of available connections");
             }
         }
     }

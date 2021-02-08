@@ -9,30 +9,26 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using log4net;
 using CTREPORTINGMODULELib;
 using CTCORELib;
-
-using System.Linq;
-using System.Text;
-using CTCOMDEFAULTLib;
 using CTCLIENTSERVERLib;
-using CTCOMMONMODULELib;
-
-using CTKREFLib;
-using CTTRANSFERLib;
 using CTSWeb.Util;
 
 
 namespace CTSWeb.Models
 {
-
     public class Reporting : ManagedObjectWithDescAndSecurity // Inherits ID and Name
     {
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        
         static Reporting() 
         {
-            // Comment seems to bug the second time it's called
-            Manager.Register<Reporting>((int)CtReportingManagers.CT_REPORTING_MANAGER, (int)(TranslatableField.ShortDesc | TranslatableField.LongDesc));
+            Manager.Register<Reporting>((int)CtReportingManagers.CT_REPORTING_MANAGER, (int)(LanguageMasks.ShortDesc | LanguageMasks.LongDesc | LanguageMasks.Comment)); // TranslatableField.None
         }
+        
+        // Argument-less constructor
+        public Reporting() { }
 
         public string Phase;
         public string UpdatePeriod;
@@ -51,45 +47,29 @@ namespace CTSWeb.Models
         public DateTime ReportingHierarchyDate;
         public List<RelatedEntityReportingCollection> RelatedEntityReportingCollection;
 
-        public Reporting()
+
+        public override void ReadFrom(ICtObject roObject, Language roLang)
         {
-        }
+            base.ReadFrom(roObject, roLang);
 
-        public override ManagedObject CreateFrom(ICtObjectBase roObj, Language roLang)
-        {
-            Reporting oNewObj = new Reporting();
-
-            _oLanguage = roLang;
-
-            PrReportingModel(oNewObj, (ICtReporting)roObj, false);
-            return oNewObj;
-        }
-
-        public Reporting(ICtReporting reporting, bool details = false)
-        {
-            PrReportingModel(this, reporting, details);
-        }
-
-        private void PrReportingModel(Reporting roObj, ICtReporting reporting, bool details)
-        {
-            Manager.LoadFromFC<Reporting>(roObj, reporting, _oLanguage);
-            roObj.Phase = reporting.Phase.Name;
-            roObj.UpdatePeriod = reporting.UpdatePeriod.Name;
-            roObj.FrameworkVersion = reporting.FrameworkVersion.Name;
-            roObj.Status = (int)reporting.Status;
-            roObj.ReportingStartDate = reporting.ReportingStartDate;
-            roObj.ReportingEndDate = reporting.ReportingEndDate;
-            if (details)
+            ICtReporting reporting = (ICtReporting)roObject;
+            Phase = reporting.Phase.Name;
+            UpdatePeriod = reporting.UpdatePeriod.Name;
+            FrameworkVersion = reporting.FrameworkVersion.Name;
+            Status = (int)reporting.Status;
+            ReportingStartDate = reporting.ReportingStartDate;
+            ReportingEndDate = reporting.ReportingEndDate;
+            if (false)      // TODO deal with details
             {
-                roObj.Framework = new Framework(reporting.Framework);
-                roObj.ExchangeRate = new ExchangeRate(reporting.ExchangeRate);
-                roObj.ExchangeRateUpdatePeriod = new ExchangeRateUpdatePeriod(reporting.ExchangeRateUpdatePeriod);
-                roObj.ExchangeRateVersion = new ExchangeRateVersion(reporting.ExchangeRateVersion);
-                roObj.RelatedEntityReportingCollection = new List<RelatedEntityReportingCollection>();
+                Framework = new Framework(reporting.Framework);
+                ExchangeRate = new ExchangeRate(reporting.ExchangeRate);
+                ExchangeRateUpdatePeriod = new ExchangeRateUpdatePeriod(reporting.ExchangeRateUpdatePeriod);
+                ExchangeRateVersion = new ExchangeRateVersion(reporting.ExchangeRateVersion);
+                RelatedEntityReportingCollection = new List<RelatedEntityReportingCollection>();
 
                 if (reporting.ExchangeRateType != null)
                 {
-                    roObj.ExchangeRateType = new ExchangeRateType()
+                    ExchangeRateType = new ExchangeRateType()
                     {
 
                         ID = reporting.ExchangeRateType.ID,
@@ -98,24 +78,38 @@ namespace CTSWeb.Models
                 }
                 else
                 {
-                    roObj.ExchangeRateType = new ExchangeRateType();
+                    ExchangeRateType = new ExchangeRateType();
                 }
 
                 foreach (ICtEntityReporting reporting1 in reporting.RelatedEntityReportingCollection)
                 {
-                    roObj.RelatedEntityReportingCollection.Add(new RelatedEntityReportingCollection(reporting1));
+                    RelatedEntityReportingCollection.Add(new RelatedEntityReportingCollection(reporting1));
                 }
 
-                roObj.Periods = new List<Period>();
+                Periods = new List<Period>();
                 foreach (ICtRefValue period in reporting.Periods)
                 {
-                    roObj.Periods.Add(new Period() { ID = period.ID, Name = period.Name });
+                    Periods.Add(new Period() { ID = period.ID, Name = period.Name });
                 }
-                roObj.ReportingModifyComment = reporting.ReportingModifyComment;
-                roObj.ReportingHierarchyDate = reporting.ReportingHierarchyDate;
+                ReportingModifyComment = reporting.ReportingModifyComment;
+                ReportingHierarchyDate = reporting.ReportingHierarchyDate;
+                _oLog.Debug($"Read {Phase} - {UpdatePeriod}");
             }
         }
 
+        public override void WriteInto(ICtObject roObject)
+        {
+            base.WriteInto(roObject);
+
+            ICtStatObject oObj = (ICtStatObject)roObject;
+            oObj.OwnerSite = OwnerSite;
+            oObj.OwnerWorkgroup = OwnerWorkgroup;
+            oObj.CreationDate = CreationDate;
+            oObj.Author = Author;
+            oObj.UpdateDate = UpdateDate;
+            oObj.UpdateAuthor = UpdateAuthor;
+            _oLog.Debug($"Writen {Phase} - {UpdatePeriod}");
+        }
     }
 }
 

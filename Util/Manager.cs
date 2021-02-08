@@ -27,64 +27,146 @@ namespace CTSWeb.Util
     //  Exists <==> Contains, also by ID or Name
     //  Save create or updates
 
-    public enum TranslatableField
-    {
-        ShortDesc = 1,
-        LongDesc = 2,
-        XDesc = 4,
-        Comment = 8,
-        All = 15
-    }
-
-    public class TranslatedText
-    {
-        public string Culture;      // ISO culture code describes the language in a portable way
-        public string ShortDesc;
-        public string LongDesc;
-        public string XDesc;
-        public string Comment;
-    }
 
     public class ManagedObject
     {
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         // Needs a parameterless constructor that builds an empty object
-        //      used to access the factory function
         // C# does not allow virtual constructors to state this fact, like virtual ManagedObject() { } should
         //  However, the new() constraint enforces it
 
-        // Needs a factory to construct new object from a generic FC object
-        // This will be called both for new and existing objects
+        // Needs a pair of functions to read from and write to a generic FC object
+        // These will be called both for new and existing objects
 
-        // Duplicating the working language in every object may seem wasteful
-        // However, we would otherwise need a pointer to the session, that is equally wasteful
+        // Duplicating the language in every object may seem wasteful
+        // However, we would otherwise need a pointer to the context, that is equally wasteful
         private protected Language _oLanguage;
 
         public int ID;
         public string Name;
         public string LDesc;             // Ldesc in working language
 
-        public virtual ManagedObject CreateFrom(ICtObjectBase roObject, Language roLang) { throw new NotImplementedException(); }
+        public virtual void ReadFrom(ICtObject roObject, Language roLang) {
+            _oLanguage = roLang;
 
-        public virtual void WriteInto(ICtObjectBase roObject) { throw new NotImplementedException(); }
+            ID = roObject.ID;
+            Name = roObject.Name;
+            LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roLang.WorkingLanguage);
+            _oLog.Debug($"Loaded managed object {Name}");
+        }
+
+        public virtual void WriteInto(ICtObject roObject) {
+            roObject.ID = ID;
+            roObject.Name = Name;
+            // Will be done with other descriptions roObject.set_Desc(ct_desctype.ctdesc_long, _oLanguage.WorkingLanguage, LDesc);
+        }
     }
 
 
     public class ManagedObjectWithDesc : ManagedObject
     {
-        public static int _iSupportedTranslatableFields;        // To implement in each class. Inheritance isn't supported
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public TranslatedText[] aoDescs;
+        public static int _iSupportedTranslatableFields;
+
+        public LanguageText[] Descriptions;
+         
+        public override void ReadFrom(ICtObject roObject, Language roLang)
+        {
+            base.ReadFrom(roObject, roLang);
+            Descriptions = new LanguageText[roLang.SupportedLanguages.Count];
+
+            // Access to generic type static fields is possible only through reflexion
+            Type oType = this.GetType();
+            FieldInfo oField = oType.GetField("_iSupportedTranslatableFields", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+            int iFields = (int)((oField != null) ? oField.GetValue(null) : LanguageMasks.All);
+
+            int c = 0;
+            foreach ((lang_t, string) oLanguage in roLang.SupportedLanguages)
+            {
+                Descriptions[c] = new LanguageText(oLanguage.Item1, roLang);
+                if (Descriptions[c].CultureName != oLanguage.Item2) _oLog.Debug($"Invalid culture name: expected '{Descriptions[c].CultureName}' and found '{oLanguage.Item2}'");
+                if ((iFields & (int)LanguageMasks.Comment) != 0)
+                {
+                    _oLog.Debug($"Get Comment {c}");
+                    Descriptions[c].Comment = Language.Description(roObject, ct_desctype.ctdesc_comment, oLanguage.Item1);
+                }
+                if ((iFields & (int)LanguageMasks.LongDesc) != 0)
+                {
+                    _oLog.Debug($"Get LDesc {c}");
+                    Descriptions[c].LongDesc = Language.Description(roObject, ct_desctype.ctdesc_long, oLanguage.Item1);
+                }
+                if ((iFields & (int)LanguageMasks.ShortDesc) != 0)
+                {
+                    _oLog.Debug($"Get SDesc {c}");
+                    Descriptions[c].ShortDesc = Language.Description(roObject, ct_desctype.ctdesc_short, oLanguage.Item1);
+                }
+                if ((iFields & (int)LanguageMasks.XDesc) != 0)
+                {
+                    _oLog.Debug($"Get XDesc {c}");
+                    Descriptions[c].XDesc = Language.Description(roObject, ct_desctype.ctdesc_extralong, oLanguage.Item1);
+                }
+                _oLog.Debug($"Next language {c}");
+                c++;
+            }
+            _oLog.Debug($"Loaded descriptions in {c} language(s) into managed object with desc {Name}");
+        }
+
+        public override void  WriteInto(ICtObject roObject)
+        {
+            base.WriteInto(roObject);
+            foreach (LanguageText oText in Descriptions)
+            {
+                lang_t iLang;
+                if (_oLanguage.TryGetLanguageID(oText.CultureName, out iLang))
+                {
+                    if (oText.ShortDesc != null) roObject.Desc[ct_desctype.ctdesc_short, iLang] = oText.ShortDesc;
+                    if (oText.LongDesc != null) roObject.Desc[ct_desctype.ctdesc_long, iLang] = oText.LongDesc;
+                    if (oText.XDesc != null) roObject.Desc[ct_desctype.ctdesc_extralong, iLang] = oText.XDesc;
+                    if (oText.Comment != null) roObject.Desc[ct_desctype.ctdesc_comment, iLang] = oText.Comment;
+                } // No else: if language isn't found or active, ignore
+            }
+        }
     }
 
     public class ManagedObjectWithDescAndSecurity : ManagedObjectWithDesc
     {
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         public int OwnerSite;
         public int OwnerWorkgroup;
-        public int VisibilityMode;
         public DateTime CreationDate;
         public int Author;
         public DateTime UpdateDate;
         public int UpdateAuthor;
+
+        public override void ReadFrom(ICtObject roObject, Language roLang)
+        {
+            base.ReadFrom(roObject, roLang);
+
+            ICtStatObject oObj = (ICtStatObject)roObject;
+            OwnerSite = oObj.OwnerSite;
+            OwnerWorkgroup = oObj.OwnerWorkgroup;
+            CreationDate = oObj.CreationDate;
+            Author = oObj.Author;
+            UpdateDate = oObj.UpdateDate;
+            UpdateAuthor = oObj.UpdateAuthor;
+            _oLog.Debug($"Loaded managed object with security {Name}");
+        }
+
+        public override void WriteInto(ICtObject roObject)
+        {
+            base.WriteInto(roObject);
+
+            ICtStatObject oObj = (ICtStatObject)roObject;
+            oObj.OwnerSite = OwnerSite;
+            oObj.OwnerWorkgroup = OwnerWorkgroup;
+            oObj.CreationDate = CreationDate;
+            oObj.Author = Author;
+            oObj.UpdateDate = UpdateDate;
+            oObj.UpdateAuthor = UpdateAuthor;
+        }
     }
 
 
@@ -97,6 +179,8 @@ namespace CTSWeb.Util
 
         private static ICtObjectManager PrGetMgr<tObject>(ConfigClass roConfig) where tObject : ManagedObject, new()
         {
+            tObject oDummy = new tObject();     // Need that to call the class initialisation
+
             ICtProviderContainer oContainer = (ICtProviderContainer)roConfig.Session;
             if (!_oType2MgrID.TryGetValue(typeof(tObject), out int iMgrID))
             {
@@ -106,16 +190,16 @@ namespace CTSWeb.Util
             return oManager;
         }
 
-        private static ICtObjectBase PrGet<tObject>(ConfigClass roConfig, int viID, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true)
+        private static ICtObject PrGet<tObject>(ConfigClass roConfig, int viID, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true)
             where tObject : ManagedObject, new()
         {
             ICtObjectManager oManager = PrGetMgr<tObject>(roConfig);
-            ICtObjectBase oRet = oManager.GetObject(viID, viFlags, 0);
+            ICtObject oRet = (ICtObject)oManager.GetObject(viID, viFlags, 0);
             if (vbRaiseErrorIfNotFound && oRet is null) throw new KeyNotFoundException($"No object of type { typeof(tObject).Name } found with ID '{viID}'");
             return oRet;
         }
 
-        private static ICtObjectBase PrGet<tObject>(ConfigClass roConfig, string vsName, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true)
+        private static ICtObject PrGet<tObject>(ConfigClass roConfig, string vsName, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true)
             where tObject : ManagedObject, new()
         {
             ICtObjectManager oManager = PrGetMgr<tObject>(roConfig);
@@ -123,7 +207,7 @@ namespace CTSWeb.Util
             ICtOqlBooleanExpr oOql = oqlFactory.Equal(oqlFactory.Prop((int)ct_object_property.CT_NAME_PROP), oqlFactory.Value(vsName));
             ICtGenCollection oCollection = oManager.GetObjects(oOql, viFlags, 0, null);
             if (vbRaiseErrorIfNotFound && oCollection.Count == 0) throw new KeyNotFoundException($"No object of type { typeof(tObject).Name } found with name '{vsName}'");
-            ICtObjectBase oRet = (oCollection.Count == 0) ? null : oCollection.GetAt(1);
+            ICtObject oRet = (oCollection.Count == 0) ? null : (ICtObject)oCollection.GetAt(1);
             if (vbRaiseErrorIfNotFound && oRet is null) throw new ArgumentNullException($"Object of type { typeof(tObject).Name } found with name '{vsName}' is null");
             return oRet;
         }
@@ -151,13 +235,17 @@ namespace CTSWeb.Util
         public static List<tObject> GetAll<tObject>(Context roContext) where tObject : ManagedObject, new()
         {
             List<tObject> oRet = new List<tObject>();
-            tObject oDumy = new tObject();
+            tObject oDumy;
 
             ICtObjectManager oManager = PrGetMgr<tObject>(roContext.Config);
             CTCLIENTSERVERLib.ICtGenCollection oCollection = oManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
             // New tObject(oObj) generates a compiler error (new can be called only with 0 argument
-            foreach (ICtObjectBase oObj in oCollection)
-                oRet.Add((tObject)oDumy.CreateFrom(oObj, roContext.Language));
+            foreach (ICtObject oObj in oCollection)
+            {
+                oDumy = new tObject();
+                oDumy.ReadFrom(oObj, roContext.Language);
+                oRet.Add(oDumy);
+            }
             return oRet;
         }
 
@@ -165,16 +253,16 @@ namespace CTSWeb.Util
         public static tObject Get<tObject>(Context roContext, int viID) where tObject : ManagedObject, new()
         {
             tObject oDumy = new tObject();
-
-            return (tObject)oDumy.CreateFrom(PrGet<tObject>(roContext.Config, viID), roContext.Language);
+            oDumy.ReadFrom(PrGet<tObject>(roContext.Config, viID), roContext.Language);
+            return oDumy;
         }
 
 
         public static tObject Get<tObject>(Context roContext, string vsName) where tObject : ManagedObject, new()
         {
             tObject oDumy = new tObject();
-
-            return (tObject)oDumy.CreateFrom(PrGet<tObject>(roContext.Config, vsName), roContext.Language);
+            oDumy.ReadFrom(PrGet<tObject>(roContext.Config, vsName), roContext.Language);
+            return oDumy;
         }
 
 
@@ -191,7 +279,7 @@ namespace CTSWeb.Util
             if (roObject != null)
             {
                 // Get COM object to save
-                ICtObjectBase oFCObj;
+                ICtObject oFCObj;
                 if (roObject.ID == 0) // New object
                 {
                     if (roObject.Name is null)
@@ -206,85 +294,21 @@ namespace CTSWeb.Util
                         }
                         else
                         {
-                            oFCObj = PrGetMgr<tObject>(roConfig).NewObject();
+                            if (null == (oFCObj = (ICtObject)PrGetMgr<tObject>(roConfig)?.NewObject())) throw new Exception($"Can't get new {typeof(tObject)}");
                         }
                     }
                 }
                 else                     // Saving existing object
                 {
-                    oFCObj = PrGet<tObject>(roConfig, roObject.ID, ACCESSFLAGS.OM_WRITE);
+                    if (null == (oFCObj = PrGet<tObject>(roConfig, roObject.ID, ACCESSFLAGS.OM_WRITE))) throw new Exception($"Can't open {typeof(tObject)} for writing");
                 }
+                _oLog.Debug($"Writing object {roObject.Name}");
                 roObject.WriteInto(oFCObj);
                 oFCObj.IsObjectValid();
                 ((ICtObjectManager)oFCObj.Manager).SaveObject(oFCObj);
                 oFCObj.WriteUnlock();
+                _oLog.Debug("Writen");
             }
         }
-
-        public static void LoadFromFC<tObject>(ManagedObject roFacade, dynamic roFCObject, Language roLang)
-        {
-            roFacade.ID = roFCObject.ID;
-            _oLog.Debug("Get ID");
-
-            roFacade.Name = roFCObject.Name;
-            _oLog.Debug($"Get Name {roFacade.Name}"); _oLog.Debug("Get ID");
-
-            roFacade.LDesc = roFCObject.Desc[ct_desctype.ctdesc_long, roLang.WorkingLanguage];
-            _oLog.Debug("Get main LDesc");
-        }
-
-        public static void LoadFromFC<tObject>(ManagedObjectWithDesc roFacade, dynamic roFCObject, Language roLang)
-        {
-            LoadFromFC<tObject>((ManagedObject)roFacade, roFCObject, roLang);
-            roFacade.aoDescs = new TranslatedText[roLang.SupportedLanguages.Count];
-            int iFields;
-            // Access to generic type static fields is possible only through reflexion
-            Type oType = roFacade.GetType();
-            //FieldInfo oField = oType.GetField("_iSupportedTranslatableFields", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-            FieldInfo oField = null;
-            iFields = (int)((oField != null) ? oField.GetValue(null) : TranslatableField.All);
-
-            int c = 0;
-            foreach ((lang_t, string) oLanguage in roLang.SupportedLanguages)
-            {
-                roFacade.aoDescs[c] = new TranslatedText();
-                roFacade.aoDescs[c].Culture = oLanguage.Item2;
-                if ((iFields & (int)TranslatableField.Comment) != 0)
-                {
-                    roFacade.aoDescs[c].Comment = roFCObject.Desc[ct_desctype.ctdesc_comment, oLanguage.Item1];
-                    _oLog.Debug("Get Comment");
-                }
-                if ((iFields & (int)TranslatableField.LongDesc) != 0)
-                {
-                    roFacade.aoDescs[c].LongDesc = roFCObject.Desc[ct_desctype.ctdesc_long, oLanguage.Item1];
-                    _oLog.Debug("Get LDesc");
-                }
-                if ((iFields & (int)TranslatableField.ShortDesc) != 0)
-                {
-                    roFacade.aoDescs[c].ShortDesc = roFCObject.Desc[ct_desctype.ctdesc_short, oLanguage.Item1];
-                    _oLog.Debug("Get SDesc");
-                }
-                if ((iFields & (int)TranslatableField.XDesc) != 0)
-                {
-                    roFacade.aoDescs[c].XDesc = roFCObject.Desc[ct_desctype.ctdesc_extralong, oLanguage.Item1];
-                    _oLog.Debug("Get XDesc");
-                }
-                c++;
-            }
-        }
-
-        public static void LoadFromFC<tObject>(ManagedObjectWithDescAndSecurity roFacade, dynamic roFCObject, Language roLang)
-        {
-            LoadFromFC<tObject>((ManagedObjectWithDesc)roFacade, roFCObject, roLang);
-            roFacade.OwnerSite = roFCObject.OwnerSite;
-            roFacade.OwnerWorkgroup = roFCObject.OwnerWorkgroup;
-            roFacade.VisibilityMode = roFCObject.VisibilityMode;
-            roFacade.CreationDate = roFCObject.CreationDate;
-            roFacade.Author = roFCObject.Author;
-            roFacade.UpdateDate = roFCObject.UpdateDate;
-            roFacade.UpdateAuthor = roFCObject.UpdateAuthor;
-            _oLog.Debug("Get Security");
-        }
-
     }
 }
