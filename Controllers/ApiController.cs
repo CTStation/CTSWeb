@@ -28,26 +28,28 @@ namespace CTSWeb.Controllers
     // TODO: Add license-controlled access to verbs  https://github.com/rubicon-oss/LicenseHeaderManager/wiki/License-Header-Definitions
     // Standard.Licensing
 
+
+    // JsonResult with NewtonSoft JSON, giving more control than MS
+    public class CTS_JsonResult : ContentResult
+    {
+        public CTS_JsonResult(Object voObj, MessageList voMessages = null)
+        {
+            this.ContentEncoding = System.Text.Encoding.UTF8;
+            this.ContentType = "application/json";
+            JsonSerializerSettings oSettings = new JsonSerializerSettings
+            {
+                DateFormatHandling = DateFormatHandling.IsoDateFormat,
+                DateTimeZoneHandling = DateTimeZoneHandling.Utc,          // Force time zone info
+                PreserveReferencesHandling = PreserveReferencesHandling.None,   // Same object is serialized multiple times
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+            };
+            this.Content = JsonConvert.SerializeObject(new { Data = voObj, Messages = voMessages }, oSettings);
+        }
+    }
+
+
     public class ApiController : Controller
     {
-        // JsonResult with NewtonSoft JSON, giving more control than MS
-        private class PrJsonResult : ContentResult
-        {
-            public PrJsonResult(Object roObj)
-            {
-                this.ContentEncoding = System.Text.Encoding.UTF8;
-                this.ContentType = "application/json";
-                JsonSerializerSettings oSettings = new JsonSerializerSettings
-                {
-                    DateFormatHandling         = DateFormatHandling.IsoDateFormat,
-                    DateTimeZoneHandling       = DateTimeZoneHandling.Utc,          // Force time zone info
-                    PreserveReferencesHandling = PreserveReferencesHandling.None,   // Same object is serialized multiple times
-                    ReferenceLoopHandling      = ReferenceLoopHandling.Ignore
-                };
-                this.Content = JsonConvert.SerializeObject(roObj, oSettings);
-            }
-        }
-
         // Helper function to use in controllers
         // Handles exceptions without crashing the server
         // Returns the exception text in an HTTP message
@@ -66,14 +68,14 @@ namespace CTSWeb.Controllers
         }
 
 
-        public ActionResult Help() => PrSafeResult(() => new PrJsonResult(Models.Help.Commands()));
+        public ActionResult Help() => PrSafeResult(() => new CTS_JsonResult(Models.Help.Commands()));
 
 
         public ActionResult Reportings() => PrSafeResult(() =>
         {
             using (Context oSession = new Context(this.HttpContext))
             {
-                return new PrJsonResult(oSession.GetAll<Reporting>());
+                return new CTS_JsonResult(oSession.GetAll<ReportingLight>());
             }
         }
         );
@@ -81,9 +83,10 @@ namespace CTSWeb.Controllers
 
         public ActionResult Reporting(int id) => PrSafeResult(() =>
         {
-            using (Context oSession = new Context(this.HttpContext))
+            using (Context oContext = new Context(this.HttpContext))
             {
-                return new PrJsonResult(oSession.Get<Reporting>(id));
+                MessageList oMessages = oContext.NewMessageList();
+                return new CTS_JsonResult(oContext.Get<Reporting>(id, oMessages), oMessages);
             }
         }
         );
@@ -96,13 +99,17 @@ namespace CTSWeb.Controllers
             JsonTextReader oJReader = new JsonTextReader(new StreamReader(oBody));
             // JObject o = JObject.Load(oJReader);
             DataSet oSet = new JsonSerializer().Deserialize<DataSet>(oJReader);
-            // Need the test because the exception stops production of meaningfull reslut
-            if (!(oSet?.Tables["Table"] is null))
+            using (Context oContext = new Context(this.HttpContext))
             {
-                ActionResult oRet = new PrJsonResult((from row in oSet.Tables["Table"].AsEnumerable() select row["Phase"]).Distinct().ToList());
-                return oRet;
+                MessageList oMessages = oContext.NewMessageList();
+
+                List<Reporting> oReportings = Models.Reporting.LoadFromDataSet(oSet, oContext, oMessages);
+                foreach (Reporting oObj in oReportings)
+                {
+                    oContext.Save<Reporting>(oObj, oMessages);
+                }
+                return new CTS_JsonResult(null, oMessages);
             }
-            else throw new KeyNotFoundException("Table not found in dataset");
         }
         );
 
@@ -110,11 +117,28 @@ namespace CTSWeb.Controllers
         {
             using (Context oContext = new Context(this.HttpContext))
             {
-                return new PrJsonResult(oContext.GetActiveLanguages());
+                return new CTS_JsonResult(oContext.GetActiveLanguages());
+            }
+        }
+        );
+
+        public ActionResult Users() => PrSafeResult(() =>
+        {
+            using (Context oContext = new Context(this.HttpContext))
+            {
+                return new CTS_JsonResult(oContext.GetAll<UserLight>());
             }
         }
         );
 
 
+        public ActionResult Dimensions() => PrSafeResult(() =>
+        {
+            using (Context oContext = new Context(this.HttpContext))
+            {
+                return new CTS_JsonResult(oContext.GetAll<DataSource>());
+            }
+        }
+        );
     }
 }

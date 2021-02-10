@@ -44,6 +44,8 @@ namespace CTSWeb.Models
                 PrAddCommand(oList, "Reportings", "GET", "Returns the list of reportings");
                 PrAddCommand(oList, "Reporting", "POST", "Creates or updates 1 or many reportings");
                 PrAddCommand(oList, "Reporting/ID", "GET", "Returns the content of 1 reporting");
+                PrAddCommand(oList, "Languages", "GET", "Returns the list of FC working languages");
+                PrAddCommand(oList, "Users", "GET", "Returns the list of users");
 
                 _aoCommands = PrSort(oList);
             }

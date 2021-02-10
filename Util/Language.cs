@@ -15,9 +15,9 @@ using CTCLIENTSERVERLib;
 
 namespace CTSWeb.Util
 {
-    public class LanguageText
+     public class LanguageText
     {
-        public string CultureName { get ; } // ISO culture code describes the language in a portable way. Nether null
+        public string CultureName { get; } // ISO culture code describes the language in a portable way. Never null. Linked to FC user languages
         public string ShortDesc;
         public string LongDesc;
         public string XDesc;
@@ -25,18 +25,19 @@ namespace CTSWeb.Util
 
         public LanguageText(lang_t viLang, Language voLang)
         {
-            string s;
-            if (voLang.TryGetISO(viLang, out s)) CultureName = s; else throw new KeyNotFoundException($"Language {viLang} has no associated culture");
+            string s = null;
+            if (!voLang.TryGetISO(viLang, out s)) throw new KeyNotFoundException($"Language {viLang} has no associated culture");
+            CultureName = s;
         }
 
         public LanguageText(string vsCultureName, Language voLang)
         {
             if (vsCultureName == null) throw new ArgumentNullException("Culture name");
-            lang_t iLang;
+            lang_t iLang = 0;
             if (!voLang.TryGetLanguageID(vsCultureName, out iLang)) throw new KeyNotFoundException($"No language has the {vsCultureName} culture");
+            CultureName = vsCultureName;
         }
     }
-
 
     public enum LanguageMasks
     {

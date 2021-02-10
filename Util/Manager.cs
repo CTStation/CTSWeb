@@ -250,18 +250,36 @@ namespace CTSWeb.Util
         }
 
 
-        public static tObject Get<tObject>(Context roContext, int viID) where tObject : ManagedObject, new()
+        public static tObject Get<tObject>(Context roContext, int viID, MessageList roMess) where tObject : ManagedObject, new()
         {
             tObject oDumy = new tObject();
-            oDumy.ReadFrom(PrGet<tObject>(roContext.Config, viID), roContext.Language);
+            ICtObject oFCObj = PrGet<tObject>(roContext.Config, viID);
+            if (oFCObj == null)
+            {
+                oDumy = null;
+                roMess.Add("RF0110", typeof(tObject).Name, viID);
+            }
+            else
+            {
+                oDumy.ReadFrom(oFCObj, roContext.Language);
+            }
             return oDumy;
         }
 
 
-        public static tObject Get<tObject>(Context roContext, string vsName) where tObject : ManagedObject, new()
+        public static tObject Get<tObject>(Context roContext, string vsName, MessageList roMess) where tObject : ManagedObject, new()
         {
             tObject oDumy = new tObject();
-            oDumy.ReadFrom(PrGet<tObject>(roContext.Config, vsName), roContext.Language);
+            ICtObject oFCObj = PrGet<tObject>(roContext.Config, vsName);
+            if (oFCObj == null)
+            {
+                oDumy = null;
+                roMess.Add("RF0111", typeof(tObject).Name, vsName);
+            }
+            else
+            {
+                oDumy.ReadFrom(oFCObj, roContext.Language);
+            }
             return oDumy;
         }
 
@@ -274,7 +292,7 @@ namespace CTSWeb.Util
             => !(PrGet<tObject>(roConfig, vsName, ACCESSFLAGS.OM_READ, false) is null);
 
 
-        public static void Save<tObject>(ConfigClass roConfig, tObject roObject) where tObject : ManagedObject, new()
+        public static void Save<tObject>(ConfigClass roConfig, tObject roObject, MessageList roMess) where tObject : ManagedObject, new()
         {
             if (roObject != null)
             {

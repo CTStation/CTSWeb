@@ -14,6 +14,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Diagnostics;
+using log4net;
 
 
 namespace CTSWeb.Util
@@ -33,6 +34,8 @@ namespace CTSWeb.Util
 
 	public class TimedCache<tKey, tValue>
 	{
+		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+		
 		private class TItem<tValue2>
 		{
 			private readonly int _iLastUsedTick;
@@ -118,12 +121,14 @@ namespace CTSWeb.Util
 							{
 								if (!(oRemovedItem.LastUsed < iLastLiveTick))
 								{
-									// The old entry was robed by another process while scaning the FIFO, and we discared a valid entry. 
+									// The old entry was robed by another process while scanning the FIFO, and we discarded a valid entry. 
 									// Too bad, but no way to recover it, so silently push that under the rug in non debug mode
-									Debug.Print ("Discarded a still yound entry, aged " + ((Environment.TickCount - oRemovedItem.LastUsed) / 1000.0).ToString() + "s");
+									_oLog.Debug($"Discarded a still young entry, aged {((Environment.TickCount - oRemovedItem.LastUsed) / 1000.0)} s");
 								}
-                                oCache._oDisposeValue?.Invoke(oRemovedItem.Value);
-                            }
+								_oLog.Debug($"Discarding {oRemovedItem.Value.ToString()}");
+								oCache._oDisposeValue?.Invoke(oRemovedItem.Value);
+								_oLog.Debug($"Completed discarding {oRemovedItem.Value.ToString()}");
+							}
 						} else {
 							break;	// if an entry is live, all the next ones should be. Otherwise, they'll get caght on the next run 
                         }

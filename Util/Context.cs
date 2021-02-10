@@ -27,7 +27,7 @@ namespace CTSWeb.Util
     //      Should be used as using(Context(...)){} to be sure to call Dispose
     //      Created in each controller verb, so no language change is allowed
     //      All objects referencing a Context or a Contxet.Config should be disposed of before the context is Disposed
-    //      TODO: group all objects (managers, ...) in this class as methods to ensure disposal
+
 
     public class Context : IDisposable
     {
@@ -105,7 +105,7 @@ namespace CTSWeb.Util
             bool bFoundInCache = false;
             while (S_oCache.TryPop(_oKey, out ConfigClass oConfig))
             {
-                // This test should prevent using a stalled connection
+                // This test should prevent using a stalled connection TODO remove connectopn by thread or add it here
                 if (oConfig.IsActive(_oKey.BrokerName, _oKey.DatasourceName, _oKey.UserName, _oKey.Password))
                 {
                     Config = oConfig;
@@ -130,17 +130,27 @@ namespace CTSWeb.Util
             Config.Session.UserLanguage = Language.WorkingLanguage;
         }
 
-        # region  Manager functions
-        
-        public List<tObject> GetAll<tObject>()      where tObject : ManagedObject, new() => Manager.GetAll<tObject>(this);
 
-        public tObject Get<tObject>(int viID)       where tObject : ManagedObject, new() => Manager.Get<tObject>(this, viID);
-        public tObject Get<tObject>(string vsName)  where tObject : ManagedObject, new() => Manager.Get<tObject>(this, vsName);
+        #region MessageList functions
 
-        public bool Exists<tObject>(int viID)       where tObject : ManagedObject, new() => Manager.Exists<tObject>(Config, viID);
-        public bool Exists<tObject>(string vsName)  where tObject : ManagedObject, new() => Manager.Exists<tObject>(Config, vsName);
+        public MessageList NewMessageList()
+        {
+            return new MessageList(Culture.Name);
+        }
 
-        public void Save<tObject>(tObject voObj)    where tObject : ManagedObject, new() => Manager.Save<tObject>(Config, voObj);
+        #endregion
+
+        #region  Manager functions
+
+        public List<tObject> GetAll<tObject>()                          where tObject : ManagedObject, new() => Manager.GetAll<tObject>(this);
+
+        public tObject Get<tObject>(int viID, MessageList roMess)       where tObject : ManagedObject, new() => Manager.Get<tObject>(this, viID, roMess);
+        public tObject Get<tObject>(string vsName, MessageList roMess)  where tObject : ManagedObject, new() => Manager.Get<tObject>(this, vsName, roMess);
+
+        public bool Exists<tObject>(int viID)                           where tObject : ManagedObject, new() => Manager.Exists<tObject>(Config, viID);
+        public bool Exists<tObject>(string vsName)                      where tObject : ManagedObject, new() => Manager.Exists<tObject>(Config, vsName);
+
+        public void Save<tObject>(tObject voObj, MessageList roMess)    where tObject : ManagedObject, new() => Manager.Save<tObject>(Config, voObj, roMess);
 
         #endregion
 
