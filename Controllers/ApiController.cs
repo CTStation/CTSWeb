@@ -132,11 +132,11 @@ namespace CTSWeb.Controllers
         );
 
 
-        public ActionResult Dimensions() => PrSafeResult(() =>
+        public ActionResult RefTables() => PrSafeResult(() =>
         {
             using (Context oContext = new Context(this.HttpContext))
             {
-                return new CTS_JsonResult(oContext.GetAll<DataSource>());
+                return new CTS_JsonResult(oContext.GetAll<RefTable>());
             }
         }
         );

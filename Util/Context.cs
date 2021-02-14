@@ -98,6 +98,8 @@ namespace CTSWeb.Util
 
         public ConfigClass Config { get; }
 
+
+
         public Context(HttpContextBase roContext)
         {
             _oKey = new PrConnectionInfo(roContext);
@@ -128,6 +130,8 @@ namespace CTSWeb.Util
             string sModifyedLanguagesISO = roContext.Request.Headers.Get("P008.ctstation.fr");
             Language = new Language(Config, sWorkingLanguageISO, sModifyedLanguagesISO);
             Config.Session.UserLanguage = Language.WorkingLanguage;
+
+
         }
 
 
@@ -154,9 +158,35 @@ namespace CTSWeb.Util
 
         #endregion
 
+        // Cache for RetTable values
+        private Dictionary<string, HashSet<string>> _oRefValues;
+
+        public HashSet<string> GetRefValues(string vsTableName)
+        {
+            HashSet<string> oRet;
+            if (_oRefValues == null) _oRefValues = new Dictionary<string, HashSet<string>>();
+            if (_oRefValues.ContainsKey(vsTableName))
+            {
+                oRet = _oRefValues[vsTableName];
+            }
+            else
+            {
+                oRet = Manager.GetRefValueCodes(Config, vsTableName);
+                _oRefValues.Add(vsTableName, oRet);
+            }
+            return oRet;
+        }
+
+        public static Predicate<string> GetPeriodValidator = (string s) =>
+        {
+            int i;
+            return s.Length == 7 && Int32.TryParse(s.Substring(0, 4), out i) && (1900 <= i) && (i <= 2999) &&
+                            s.Substring(4, 1) == "." &&
+                            Int32.TryParse(s.Substring(5), out i) && (1 <= i) && (i <= 12);
+        };
 
         // This is called by the using() pattern, as the class implements iDisposible
-        public void Dispose()
+            public void Dispose()
         {
             if (!(Config is null) && !(_oKey is null))
             {

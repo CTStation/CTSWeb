@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using log4net;
 using CTCLIENTSERVERLib;
 using CTCORELib;
+using CTCOMMONMODULELib;
 using CTSWeb.Util;
 
 namespace CTSWeb.Models
@@ -104,6 +105,22 @@ namespace CTSWeb.Models
                 this.Dimensions.Add(oDim);
             }
         }
+    }
+
+
+    public class RefTable : ManagedObject // Inherits ID and Name and LDesc
+    {
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        static RefTable()
+        {
+            Manager.Register<RefTable>((int)ct_core_manager.CT_REFTABLE_MANAGER);
+        }
+
+        // Argument-less constructor
+        public RefTable() { }
+
+
     }
 }
 

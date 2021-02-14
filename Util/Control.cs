@@ -25,7 +25,7 @@ namespace CTSWeb.Util
         TagList<string> Tags        { get; set; }
         int             Tolerance   { get; set; }
         
-        void Run(DataSet voData, MessageList roMess, Filter<string> voFilter = null);
+        bool Pass(DataSet voData, MessageList roMess, Filter<string> voFilter = null);   // Returns true if no error, false otherwise
     }
 
 
@@ -40,15 +40,17 @@ namespace CTSWeb.Util
     {
         public List<IControl> Controls = new List<IControl>();
 
-        public void Run(DataSet voData, MessageList roMess, Filter<string> voFilter = null)
+        public bool Pass(DataSet voData, MessageList roMess, Filter<string> voFilter = null)
         {
+            bool bRet = true;
             bool bTagsRequired = (voFilter != null);
             bool bShouldRun = !bTagsRequired;
             foreach (IControl oControl in Controls)
             {
                 if (bTagsRequired) bShouldRun = voFilter.Match(oControl.Tags);
-                if (bShouldRun) oControl.Run(voData, roMess);
+                if (bShouldRun) bRet &= oControl.Pass(voData, roMess);
             }
+            return bRet;
         }
     }
 
@@ -57,28 +59,122 @@ namespace CTSWeb.Util
     {
         public List<string> Tables;
 
-        public void Run(DataSet voData, MessageList roMess, Filter<string> voFilter = null)
+        public bool Pass(DataSet voData, MessageList roMess, Filter<string> voFilter = null)
         {
-            foreach (string s in Tables) if (!voData.Tables.Contains(s)) roMess.Add("RF0210", s, voData.DataSetName);
+            bool bRet = true;
+            foreach (string s in Tables)
+                if (!voData.Tables.Contains(s))
+                {
+                    bRet = false;
+                    roMess.Add("RF0210", s, voData.DataSetName);
+                }
+            return bRet;
         }
     }
 
-    public class ControlColumnExists : ControlBase, IControl
+    public class ControlColumnsExist : ControlBase, IControl
     {
         public string TableName;
         public List<string> RequiredColumns = new List<string>();
 
-        public void Run(DataSet voData, MessageList roMess, Filter<string> voFilter = null)
+        public bool Pass(DataSet voData, MessageList roMess, Filter<string> voFilter = null)
         {
+            bool bRet = true;
             if (voData.Tables.Contains(TableName)) 
             {
                 DataColumnCollection oCols = voData.Tables[TableName].Columns;
-                foreach (string s in RequiredColumns) if (!oCols.Contains(s)) roMess.Add("RF0211", s, TableName);
+                foreach (string s in RequiredColumns)
+                    if (!oCols.Contains(s))
+                    {
+                        bRet = false;
+                        roMess.Add("RF0211", s, TableName);
+                    }
             }
             else 
             {
+                bRet = false;
                 roMess.Add("RF0210", TableName, voData.DataSetName);
             }
+            return bRet;
+        }
+    }
+
+
+    public class ControlValidateColumn : ControlBase, IControl
+    {
+        public string TableName;
+        public string ColName;
+        public HashSet<string> AllowedValues;
+        public Predicate<string> Validate;
+
+        public ControlValidateColumn() { }
+
+        public ControlValidateColumn(string vsTableName, string vsColName, HashSet<string> voAllowedValues)
+        {
+            if (vsTableName is null || vsColName is null || voAllowedValues is null) throw new ArgumentNullException();
+            TableName = vsTableName;
+            ColName = vsColName;
+            AllowedValues = voAllowedValues;
+            Validate = null;
+        }
+
+        public ControlValidateColumn(string vsTableName, string vsColName, Predicate<string> voValidate)
+        {
+            if (vsTableName is null || vsColName is null || voValidate is null) throw new ArgumentNullException();
+            TableName = vsTableName;
+            ColName = vsColName;
+            AllowedValues = null;
+            Validate = voValidate;
+        }
+
+
+        public bool Pass(DataSet voData, MessageList roMess, HashSet<int> roInvalidRows, bool vbTestInvalidRows = true, Filter<string> voFilter = null)
+        {
+            bool bRet = true;
+            if (voData.Tables.Contains(TableName))
+            {
+                if (voData.Tables[TableName].Columns.Contains(ColName))
+                {
+                    bool bStoreInvalidRows = !(roInvalidRows is null);
+                    bool bUsePredicate = !(Validate is null);
+                    int iCol = voData.Tables[TableName].Columns[ColName].Ordinal;
+                    Message oMessage;
+                    string s;
+                    int c = 0;
+                    foreach (DataRow oRow in voData.Tables[TableName].Rows)
+                    {
+                        if (vbTestInvalidRows || (bStoreInvalidRows && !roInvalidRows.Contains(c)))
+                        {
+                            s = oRow[iCol].ToString();
+                            if ((bUsePredicate) ? !Validate(s) : !AllowedValues.Contains(s))
+                            {
+                                // bRet is kept to true
+                                oMessage = roMess.Add("RF0212", s, ColName);
+                                oMessage.SourceRow = c + 1;
+                                oMessage.SourceCol = iCol + 1;
+                                if (bStoreInvalidRows) roInvalidRows.Add(c);
+                            }
+                        }
+                        c++;
+                    }
+                }
+                else
+                {
+                    bRet = false;
+                    roMess.Add("RF0211", ColName, TableName);
+                }
+            }
+            else
+            {
+                bRet = false;
+                roMess.Add("RF0210", TableName, voData.DataSetName);
+            }
+            return bRet;
+        }
+
+        public bool Pass(DataSet voData, MessageList roMess, Filter<string> voFilter = null)
+        {
+            return Pass(voData, roMess, null, false);
         }
     }
 }

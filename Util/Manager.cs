@@ -87,27 +87,10 @@ namespace CTSWeb.Util
             {
                 Descriptions[c] = new LanguageText(oLanguage.Item1, roLang);
                 if (Descriptions[c].CultureName != oLanguage.Item2) _oLog.Debug($"Invalid culture name: expected '{Descriptions[c].CultureName}' and found '{oLanguage.Item2}'");
-                if ((iFields & (int)LanguageMasks.Comment) != 0)
-                {
-                    _oLog.Debug($"Get Comment {c}");
-                    Descriptions[c].Comment = Language.Description(roObject, ct_desctype.ctdesc_comment, oLanguage.Item1);
-                }
-                if ((iFields & (int)LanguageMasks.LongDesc) != 0)
-                {
-                    _oLog.Debug($"Get LDesc {c}");
-                    Descriptions[c].LongDesc = Language.Description(roObject, ct_desctype.ctdesc_long, oLanguage.Item1);
-                }
-                if ((iFields & (int)LanguageMasks.ShortDesc) != 0)
-                {
-                    _oLog.Debug($"Get SDesc {c}");
-                    Descriptions[c].ShortDesc = Language.Description(roObject, ct_desctype.ctdesc_short, oLanguage.Item1);
-                }
-                if ((iFields & (int)LanguageMasks.XDesc) != 0)
-                {
-                    _oLog.Debug($"Get XDesc {c}");
-                    Descriptions[c].XDesc = Language.Description(roObject, ct_desctype.ctdesc_extralong, oLanguage.Item1);
-                }
-                _oLog.Debug($"Next language {c}");
+                if ((iFields & (int)LanguageMasks.Comment) != 0) Descriptions[c].Comment = Language.Description(roObject, ct_desctype.ctdesc_comment, oLanguage.Item1);
+                if ((iFields & (int)LanguageMasks.LongDesc) != 0) Descriptions[c].LongDesc = Language.Description(roObject, ct_desctype.ctdesc_long, oLanguage.Item1);
+                if ((iFields & (int)LanguageMasks.ShortDesc) != 0) Descriptions[c].ShortDesc = Language.Description(roObject, ct_desctype.ctdesc_short, oLanguage.Item1);
+                if ((iFields & (int)LanguageMasks.XDesc) != 0) Descriptions[c].XDesc = Language.Description(roObject, ct_desctype.ctdesc_extralong, oLanguage.Item1);
                 c++;
             }
             _oLog.Debug($"Loaded descriptions in {c} language(s) into managed object with desc {Name}");
@@ -118,8 +101,7 @@ namespace CTSWeb.Util
             base.WriteInto(roObject);
             foreach (LanguageText oText in Descriptions)
             {
-                lang_t iLang;
-                if (_oLanguage.TryGetLanguageID(oText.CultureName, out iLang))
+                if (_oLanguage.TryGetLanguageID(oText.CultureName, out lang_t iLang))
                 {
                     if (oText.ShortDesc != null) roObject.Desc[ct_desctype.ctdesc_short, iLang] = oText.ShortDesc;
                     if (oText.LongDesc != null) roObject.Desc[ct_desctype.ctdesc_long, iLang] = oText.LongDesc;
@@ -177,9 +159,23 @@ namespace CTSWeb.Util
 
         private static readonly Dictionary<Type, int> _oType2MgrID = new Dictionary<Type, int>();
 
+        // Give name to ref tables
+        private static readonly Dictionary<string, int> _oCode2MgrID = new Dictionary<string, int>()
+        {
+            { "Phase",              (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_PHASE },
+            { "Entity",             (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_ENTITY },
+            { "Currency",           (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_CURRENCY },
+            { "FrameworkVersion",   (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_FRAMEWORKVERSION },
+            { "Account",            (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_ACCOUNT },
+            { "Flow",               (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_FLOW },
+            { "Nature",             (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_NATURE },
+            { "ExRateType",         (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATETYPE },
+            { "ExRateVersion",      (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATEVERSION },
+        };
+
         private static ICtObjectManager PrGetMgr<tObject>(ConfigClass roConfig) where tObject : ManagedObject, new()
         {
-            tObject oDummy = new tObject();     // Need that to call the class initialisation
+            tObject oDummy = new tObject();     // Need that to call the class initialization
 
             ICtProviderContainer oContainer = (ICtProviderContainer)roConfig.Session;
             if (!_oType2MgrID.TryGetValue(typeof(tObject), out int iMgrID))
@@ -290,6 +286,23 @@ namespace CTSWeb.Util
 
         public static bool Exists<tObject>(ConfigClass roConfig, string vsName) where tObject : ManagedObject, new()
             => !(PrGet<tObject>(roConfig, vsName, ACCESSFLAGS.OM_READ, false) is null);
+
+
+        public static HashSet<string> GetRefValueCodes(ConfigClass roConfig, string vsTableCode)
+        {
+            ICtProviderContainer oContainer = (ICtProviderContainer)roConfig.Session;
+            if (!_oCode2MgrID.TryGetValue(vsTableCode, out int iMgrID))
+            {
+                throw new ArgumentException($"Unrecognized FC table '{vsTableCode}'");
+            }
+            ICtObjectManager oManager = (ICtObjectManager)oContainer.get_Provider(1, iMgrID);
+            HashSet<string> oRet = new HashSet<string>();
+            foreach (ICtObject o in oManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+            {
+                oRet.Add(o.Name);
+            }
+            return oRet;
+        }
 
 
         public static void Save<tObject>(ConfigClass roConfig, tObject roObject, MessageList roMess) where tObject : ManagedObject, new()

@@ -136,17 +136,13 @@ namespace CTSWeb.Models
 
         public static List<Reporting> LoadFromDataSet(DataSet voData, Context voContext, MessageList roMessages)
         {
-            if (voData?.Tables?["Table"] is null)
+            IControl oCtrl = new ControlColumnsExist() { TableName = "Table", RequiredColumns = new List<string> { "Phase", "UpdatePeriod", "FrameworkVersion" } };
+            if (oCtrl.Pass(voData, roMessages))
             {
-                roMessages.Add("RF0012");        //  "Table not found in sent data", "Could be a transient network error. Signal the issue if it happens again"),
-            }
-            else
-            {
-                foreach (string sCateg in (from row in voData.Tables["Table"].AsEnumerable() select row["Category"]).Distinct().ToList())
-                {
-                   // voData.Tables["Table"].
-                }
-
+                HashSet<int> oInvalidRows = new HashSet<int>();
+                new ControlValidateColumn("Table", "Phase", voContext.GetRefValues("Phase")).Pass(voData, roMessages, oInvalidRows, true, null);
+                new ControlValidateColumn("Table", "UpdatePeriod", Context.GetPeriodValidator).Pass(voData, roMessages, oInvalidRows, true, null);
+                new ControlValidateColumn("Table", "FrameworkVersion", voContext.GetRefValues("FrameworkVersion")).Pass(voData, roMessages, oInvalidRows, true, null);
             }
             return new List<Reporting>();
         }

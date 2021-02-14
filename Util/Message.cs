@@ -52,20 +52,20 @@ namespace CTSWeb.Util
            ("RF0011",MessageSeverity.Error, ( ("en-US", "No validated framework found for category {0}", "Choose another category or validate a category builder"),
                                               ("fr-FR", "Auncun référentiel validé pour la phase {0}", "Choisissez une autre phase ou validez un référentiel de la phase") )
             ),
-           ("RF0012",MessageSeverity.Error, ( ("en-US", "Table not found in sent data", "Could be a transient network error. Signal the issue if it happens again"),
-                                              ("fr-FR", "Table absent des données envoyées", "Peut-être dû à un problème réseau transitoire. Signaler le problème s'il persiste") )
-            ),
            ("RF0110",MessageSeverity.Error, ( ("en-US", "Object of type {0} with ID {1} not found", ""),
                                               ("fr-FR", "Object de type {0} avec ID {1} non trouvé", "") )
             ),
            ("RF0111",MessageSeverity.Error, ( ("en-US", "Object of type {0} with name {1} not found", ""),
                                               ("fr-FR", "Object de type {0} de code {1} non trouvé", "") )
             ),
-           ("RF0210",MessageSeverity.Error, ( ("en-US", "Table '{0}' not found in data set '{1}'", ""),
-                                              ("fr-FR", "Table '{0}' non trouvée dans le jeu de données '{1}'", "") )
+           ("RF0210",MessageSeverity.Error, ( ("en-US", "Table '{0}' not found in data set '{1}'", "Could be a transient network error. Signal the issue if it happens again"),
+                                              ("fr-FR", "Table '{0}' non trouvée dans le jeu de données '{1}'", "Peut-être dû à un problème réseau transitoire. Signaler le problème s'il persiste") )
             ),
-           ("RF0211",MessageSeverity.Error, ( ("en-US", "Column '{0}' not found in table '{1}'", ""),
-                                              ("fr-FR", "Colonne '{0}' non trouvée dans la table '{1}'", "") )
+           ("RF0211",MessageSeverity.Error, ( ("en-US", "Column '{0}' not found in table '{1}'", "Could be a transient network error. Signal the issue if it happens again"),
+                                              ("fr-FR", "Colonne '{0}' non trouvée dans la table '{1}'", "Peut-être dû à un problème réseau transitoire. Signaler le problème s'il persiste") )
+            ),
+           ("RF0212",MessageSeverity.Error, ( ("en-US", "Invalid value '{0}' in column '{1}'", "Correct the entry"),
+                                              ("fr-FR", "Valeur incorrecte '{0}' dans la colonne '{1}'", "Corrigez la valeur") )
             ),
         };
     }
@@ -133,10 +133,10 @@ namespace CTSWeb.Util
             return oRet;
         }
 
-        public void Add(string vsCode) => PrAdd(vsCode);
-        public void Add(string vsCode, object vo1)                          { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vo1); }
-        public void Add(string vsCode, object vo1, object vo2)              { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vo1, vo2); }
-        public void Add(string vsCode, object vo1, object vo2, object vo3)  { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vo1, vo2, vo3); }
-        public void Add(string vsCode, object[] vao)                        { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vao); }
+        public Message Add(string vsCode) => PrAdd(vsCode);
+        public Message Add(string vsCode, object vo1)                          { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vo1); return o; }
+        public Message Add(string vsCode, object vo1, object vo2)              { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vo1, vo2); return o; }
+        public Message Add(string vsCode, object vo1, object vo2, object vo3)  { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vo1, vo2, vo3); return o; }
+        public Message Add(string vsCode, object[] vao)                        { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vao); return o; }
     }
 }
