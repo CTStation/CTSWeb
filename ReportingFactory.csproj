@@ -154,10 +154,11 @@
     <Compile Include="App_Start\BundleConfig.cs" />
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
+    <Compile Include="Models\Framework.cs" />
     <Compile Include="Models\Dimension.cs" />
     <Compile Include="Models\User.cs" />
     <Compile Include="Util\Filter.cs" />
-    <Compile Include="Util\Control.cs" />
+    <Compile Include="Models\Control.cs" />
     <Compile Include="Util\Message.cs" />
     <Compile Include="Util\Manager.cs" />
     <Compile Include="Util\Language.cs" />

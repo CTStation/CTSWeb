@@ -15,30 +15,6 @@ using CTCLIENTSERVERLib;
 
 namespace CTSWeb.Util
 {
-     public class LanguageText
-    {
-        public string CultureName { get; } // ISO culture code describes the language in a portable way. Never null. Linked to FC user languages
-        public string ShortDesc;
-        public string LongDesc;
-        public string XDesc;
-        public string Comment;
-
-        public LanguageText(lang_t viLang, Language voLang)
-        {
-            string s = null;
-            if (!voLang.TryGetISO(viLang, out s)) throw new KeyNotFoundException($"Language {viLang} has no associated culture");
-            CultureName = s;
-        }
-
-        public LanguageText(string vsCultureName, Language voLang)
-        {
-            if (vsCultureName == null) throw new ArgumentNullException("Culture name");
-            lang_t iLang = 0;
-            if (!voLang.TryGetLanguageID(vsCultureName, out iLang)) throw new KeyNotFoundException($"No language has the {vsCultureName} culture");
-            CultureName = vsCultureName;
-        }
-    }
-
     public enum LanguageMasks
     {
         ShortDesc = 1,
@@ -49,6 +25,43 @@ namespace CTSWeb.Util
         None = 0
     }
 
+    public class LanguageText
+    {
+        public enum Type
+        {
+            Short = 0,
+            Long = 1,
+            XL = 2,
+            Comment = 3
+        }
+
+        public static (LanguageMasks, LanguageText.Type, string, ct_desctype)[] TypeInfo = new (LanguageMasks, LanguageText.Type, string, ct_desctype)[4] {
+            (LanguageMasks.ShortDesc, LanguageText.Type.Short, "SDesc", ct_desctype.ctdesc_short),
+            (LanguageMasks.LongDesc, LanguageText.Type.Long, "LDesc", ct_desctype.ctdesc_long),
+            (LanguageMasks.XDesc, LanguageText.Type.XL, "XDesc", ct_desctype.ctdesc_extralong),
+            (LanguageMasks.Comment, LanguageText.Type.Comment, "Comment", ct_desctype.ctdesc_comment)
+        };
+
+        public string CultureName { get; } // ISO culture code describes the language in a portable way. Never null. Linked to FC user languages
+        public Dictionary<string, string> Texts;
+
+        public LanguageText(lang_t viLang, Language voLang)
+        {
+            string s = null;
+            if (!voLang.TryGetISO(viLang, out s)) throw new KeyNotFoundException($"Language {viLang} has no associated culture");
+            CultureName = s;
+            Texts = new Dictionary<string, string>();
+        }
+
+        public LanguageText(string vsCultureName, Language voLang)
+        {
+            if (vsCultureName == null) throw new ArgumentNullException("Culture name");
+            lang_t iLang = 0;
+            if (!voLang.TryGetLanguageID(vsCultureName, out iLang)) throw new KeyNotFoundException($"No language has the {vsCultureName} culture");
+            CultureName = vsCultureName;
+            Texts = new Dictionary<string, string>();
+        }
+    }
 
     // Loads and caches all languages descriptions
     //      Maps FC languages and ISO culture codes that can be used by clients through the en-US description of the language in FC
@@ -157,7 +170,7 @@ namespace CTSWeb.Util
                 bISOFound = false;
                 foreach (lang_t iLang in _aiIndex2LangIds)
                 {
-                    sLangDesc = Description((ICtLanguage)oLang, ct_desctype.ctdesc_long, iLang);
+                    sLangDesc = Description((ICtLanguage)oLang, LanguageText.Type.Long, iLang);
                     _asDescs[c, j] = sLangDesc;
                     // If the same description is used on multiple rows, keep the first and silently ignore the others
                     if (bActive && !bISOFound && _oDesc2ISO.TryGetValue(sLangDesc, out sLangISO) && !_oISO2Lang.ContainsKey(sLangISO))
@@ -174,7 +187,7 @@ namespace CTSWeb.Util
             if (!(vsRequestedWorkingLanguageISO == null) && _oISO2Lang.TryGetValue(vsRequestedWorkingLanguageISO, out iWorkingLanguage))
             {
                 sActiveWorkingLanguageISO = vsRequestedWorkingLanguageISO;
-            } 
+            }
             else
             {
                 iWorkingLanguage = _oActiveLanguages[0];
@@ -185,29 +198,34 @@ namespace CTSWeb.Util
         #endregion
 
         // Desc[ct_desctype, lang_t] crashes when returning a null value in a multi thread setting. Use Prop instead
-        public static string Description(ICtObjectBase roFCObj, ct_desctype viType, lang_t viLang)
+
+        private static int PrDescProp(LanguageText.Type viType, lang_t viLang)
         {
             const int cLang = 6;
 
             int iLangOffset = PrLang2Index(viLang);
             switch (viType)
             {
-                case ct_desctype.ctdesc_short:
+                case LanguageText.Type.Short:
                     break;
-                case ct_desctype.ctdesc_long:
+                case LanguageText.Type.Long:
                     iLangOffset += cLang;
                     break;
-                case ct_desctype.ctdesc_extralong:
+                case LanguageText.Type.XL:
                     iLangOffset += 2 * cLang;
                     break;
-                case ct_desctype.ctdesc_comment:
+                case LanguageText.Type.Comment:
                     iLangOffset += 3 * cLang;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown description type {viType}");
             }
-            return (string)(roFCObj?.PropVal[_aiDescProps[iLangOffset]]);
+            return _aiDescProps[iLangOffset];
         }
+
+        public static string Description(ICtObjectBase roFCObj, LanguageText.Type viType, lang_t viLang) => (string)(roFCObj?.PropVal[PrDescProp(viType, viLang)]);
+
+        public static void SetDesc(ICtObjectBase roFCObj, LanguageText.Type viType, lang_t viLang, string vsVal) { if (!(roFCObj is null)) roFCObj.PropVal[PrDescProp(viType, viLang)] = vsVal; }
 
 
         public readonly lang_t WorkingLanguage;

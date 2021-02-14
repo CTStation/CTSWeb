@@ -24,57 +24,57 @@ namespace CTSWeb.Models
 {
 
 
-    public class Framework
-    {
-       // public List<ControlLevel> ControlLevels { get; }
+    //public class Framework
+    //{
+    //   // public List<ControlLevel> ControlLevels { get; }
 
-        public Framework(IRefObjRef roFramework)
-        {
-            // ControlLevels = new List<ControlLevel>();
+    //    public Framework(IRefObjRef roFramework)
+    //    {
+    //        // ControlLevels = new List<ControlLevel>();
 
-            //foreach (IRefCtrlFamily obj in framework.CtrlFamilyList)
-            //{
-            //        Console.WriteLine(obj.Name);
-            //}
+    //        //foreach (IRefCtrlFamily obj in framework.CtrlFamilyList)
+    //        //{
+    //        //        Console.WriteLine(obj.Name);
+    //        //}
 
-            //foreach (IRefControl obj in framework.ControlList)
-            //{
-            //    Controls.Add(new Control(obj));
-            //}
+    //        //foreach (IRefControl obj in framework.ControlList)
+    //        //{
+    //        //    Controls.Add(new Control(obj));
+    //        //}
 
-            //foreach (IRefControlSet obj in framework.CtrlSetList)
-            //{
-            //    ControlSets.Add(new ControlsSets(obj));
-            //}
-        }
+    //        //foreach (IRefControlSet obj in framework.CtrlSetList)
+    //        //{
+    //        //    ControlSets.Add(new ControlsSets(obj));
+    //        //}
+    //    }
 
-        public bool TryGet(string rsPhaseName, string rsVersionName, Context roFCSession, out IRefObjRef roRef)
-        {
-            bool bFound = false;
+    //    public bool TryGet(string rsPhaseName, string rsVersionName, Context roFCSession, out IRefObjRef roRef)
+    //    {
+    //        bool bFound = false;
 
-            ICtProviderContainer oProviderContainer = (ICtProviderContainer)roFCSession.Config; ;
-            ICtObjectManager oManager = (ICtObjectManager)oProviderContainer.get_Provider(1, (int)ct_core_manager.CT_REFTABLE_MANAGER);
-            ICtGenCollection oColl = oManager. GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
+    //        ICtProviderContainer oProviderContainer = (ICtProviderContainer)roFCSession.Config; ;
+    //        ICtObjectManager oManager = (ICtObjectManager)oProviderContainer.get_Provider(1, (int)ct_core_manager.CT_REFTABLE_MANAGER);
+    //        ICtGenCollection oColl = oManager. GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
 
-            roRef = default;
-            foreach (IRefObjRef oFrame in oColl)
-            {
-                if (oFrame.Phase.Name == rsPhaseName && oFrame.Version.Name == rsVersionName)
-                {
-                    bFound = true;
-                    roRef = oFrame;
-                    break;
-                }
-            }
-            return bFound;
-        }
-    }
+    //        roRef = default;
+    //        foreach (IRefObjRef oFrame in oColl)
+    //        {
+    //            if (oFrame.Phase.Name == rsPhaseName && oFrame.Version.Name == rsVersionName)
+    //            {
+    //                bFound = true;
+    //                roRef = oFrame;
+    //                break;
+    //            }
+    //        }
+    //        return bFound;
+    //    }
+    //}
 
     public class ControlsSets
     {
         public int ID;
         public string Name;
-        public List<Control> Controls;
+        public List<FCControl> Controls;
         //List<ControlsSets> ControlSets;
         public List<ControlSubSets> ControlSubSets;
 
@@ -83,7 +83,7 @@ namespace CTSWeb.Models
         {
             ID = obj.ID;
             Name = obj.Name;
-            Controls = new List<Control>();
+            Controls = new List<FCControl>();
             ControlSubSets = new List<ControlSubSets>();
             foreach (IRefCtrlFamily refObjRef in obj.Content)
             {
@@ -99,7 +99,7 @@ namespace CTSWeb.Models
                         ControlSubSets.Add(new ControlSubSets((IRefCtrlFamily)refObjRef));
                         break;
                     default:
-                        Controls.Add(new Control((IRefControl)refObjRef));
+                        Controls.Add(new FCControl((IRefControl)refObjRef));
                         break;
 
                 }
@@ -114,25 +114,25 @@ namespace CTSWeb.Models
     {
         public int ID;
         public string Name;
-        public List<Control> ManualControls = new List<Control>();
-        public List<Control> AutomaticControls = new List<Control>();
+        public List<FCControl> ManualControls = new List<FCControl>();
+        public List<FCControl> AutomaticControls = new List<FCControl>();
 
         public ControlSubSets(IRefCtrlFamily controlFamily)
         {
             ID = controlFamily.ID;
             Name = controlFamily.Name;
-            ManualControls = new List<Control>();
-            AutomaticControls = new List<Control>();
+            ManualControls = new List<FCControl>();
+            AutomaticControls = new List<FCControl>();
             foreach (IRefControlBase control in controlFamily.Content)
             {
                 switch (control.Type)
                 {
                     case -524233:
-                        ManualControls.Add(new Control(control));
+                        ManualControls.Add(new FCControl(control));
                         break;
 
                     case -524232:
-                        AutomaticControls.Add(new Control(control));
+                        AutomaticControls.Add(new FCControl(control));
                         break;
                 }
                 // Controls.Add(new Control(control));
@@ -140,12 +140,12 @@ namespace CTSWeb.Models
         }
     }
 
-    public class Control
+    public class FCControl
     {
         public int ID;
         public string Name;
         public string Expression;
-        public Control(IRefControlBase control)
+        public FCControl(IRefControlBase control)
         {
             ID = control.ID;
             Name = control.Name;

@@ -21,7 +21,7 @@ using CTSWeb.Util;
 
 namespace CTSWeb.Models
 {
-    
+
     public class Dimension : ManagedObject // Inherits ID and Name and LDesc
     {
         private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
@@ -35,6 +35,7 @@ namespace CTSWeb.Models
         public Dimension() { }
 
         private ICtRefTable _oRefTable;
+        private ICtDimension _oDim;
 
         public override void ReadFrom(ICtObject roObject, Language roLang)
         {
@@ -42,26 +43,28 @@ namespace CTSWeb.Models
 
             ICtDimension oDim = (ICtDimension)roObject;
             _oRefTable = oDim.RefTable;
+            _oDim = oDim;
         }
 
         // Cache only recent queries
-        private Dictionary<string, int> _oCode2ID = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _oCode2ID = new Dictionary<string, int>();
         public bool ValueExists(string vsCode)
         {
             bool bRet = false;
-            if (_oCode2ID.ContainsKey(vsCode)) {
+            if (_oCode2ID.ContainsKey(vsCode))
+            {
                 bRet = true;
             }
             else
             {
                 ICtRefValue oRefVal = _oRefTable.RefValueFromName[vsCode, 0];
-                if (bRet = (oRefVal != null)) _oCode2ID[vsCode] = oRefVal.ID;                
+                if (bRet = (oRefVal != null)) _oCode2ID[vsCode] = oRefVal.ID;
             }
             return bRet;
         }
 
 
-        private Dictionary<int, string> _oID2Code = new Dictionary<int, string>();
+        private readonly Dictionary<int, string> _oID2Code = new Dictionary<int, string>();
         public bool ValueExists(int viID)
         {
             bool bRet = false;
@@ -99,7 +102,8 @@ namespace CTSWeb.Models
 
             ICtDataSource oSource = (ICtDataSource)roObject;
             Dimensions = new List<Dimension>();
-            foreach (ICtObjectBase o in oSource.Dimensions) {
+            foreach (ICtObjectBase o in oSource.Dimensions)
+            {
                 Dimension oDim = new Dimension();
                 oDim.ReadFrom((ICtObject)o, roLang);
                 this.Dimensions.Add(oDim);
@@ -120,8 +124,32 @@ namespace CTSWeb.Models
         // Argument-less constructor
         public RefTable() { }
 
-
     }
+
+
+    public class RefValue : ManagedObjectWithDesc
+    {
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        static RefValue()
+        {
+            // Manager.Register<RefTable>((int)ct_core_manager.CT_REFTABLE_MANAGER);
+        }
+
+        // Argument-less constructor
+        public RefValue() { }
+
+        public ICtRefValue FCRefValue;
+
+        public override void ReadFrom(ICtObject roObject, Language roLang)
+        {
+            base.ReadFrom(roObject, roLang);
+
+            FCRefValue = (ICtRefValue)roObject;
+        }
+    }
+
+
 }
 
 

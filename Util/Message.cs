@@ -46,11 +46,11 @@ namespace CTSWeb.Util
     {
         public static readonly List<(string, MessageSeverity, ((string, string, string), (string, string, string)))> Setup = new List<(string, MessageSeverity, ((string, string, string), (string, string, string)))>()
         {
-            ( "RF0010", MessageSeverity.Error, ( ("en-US", "Category {0} not found", "Choose another category" ),
-                                                ( "fr-FR", "Auncun référentiel validé pour la phase {0}", "Choisissez une autre phase" ) )
+           ("RF0010",MessageSeverity.Error, ( ("en-US", "No framework found for category {0}, version {1}", "Choose another category or validate a category builder"),
+                                              ("fr-FR", "Auncun référentiel pour la phase {0}, version {1}", "Choisissez une autre phase ou validez un référentiel de la phase") )
             ),
-           ("RF0011",MessageSeverity.Error, ( ("en-US", "No validated framework found for category {0}", "Choose another category or validate a category builder"),
-                                              ("fr-FR", "Auncun référentiel validé pour la phase {0}", "Choisissez une autre phase ou validez un référentiel de la phase") )
+           ("RF0011",MessageSeverity.Error, ( ("en-US", "No published framework found for category {0}, , version {1}", "Choose another category or publish the category builder"),
+                                              ("fr-FR", "Auncun référentiel publié pour la phase {0}, version {1}", "Choisissez une autre phase ou publiez le référentiel") )
             ),
            ("RF0110",MessageSeverity.Error, ( ("en-US", "Object of type {0} with ID {1} not found", ""),
                                               ("fr-FR", "Object de type {0} avec ID {1} non trouvé", "") )
@@ -66,6 +66,9 @@ namespace CTSWeb.Util
             ),
            ("RF0212",MessageSeverity.Error, ( ("en-US", "Invalid value '{0}' in column '{1}'", "Correct the entry"),
                                               ("fr-FR", "Valeur incorrecte '{0}' dans la colonne '{1}'", "Corrigez la valeur") )
+            ),
+           ("RF0310",MessageSeverity.Info, ( ("en-US", "Changed {0} from '{1}' to '{2}'", ""),
+                                              ("fr-FR", "Change {0} de '{1}' à '{2}'", "") )
             ),
         };
     }

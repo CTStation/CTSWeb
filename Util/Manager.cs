@@ -56,9 +56,16 @@ namespace CTSWeb.Util
             _oLog.Debug($"Loaded managed object {Name}");
         }
 
-        public virtual void WriteInto(ICtObject roObject) {
-            roObject.ID = ID;
-            roObject.Name = Name;
+        public virtual void WriteInto(ICtObject roObject, MessageList roMess) {
+            bool bTest = !(roMess is null);
+
+            // Nether change object ID 
+            // roObject.ID = ID;
+            if (!(Name is null))
+            {
+                if (bTest && !(roObject.Name is null) && roObject.Name != Name) roMess.Add("RF0310", "Name", Name, roObject.Name);
+                roObject.Name = Name;
+            }
             // Will be done with other descriptions roObject.set_Desc(ct_desctype.ctdesc_long, _oLanguage.WorkingLanguage, LDesc);
         }
     }
@@ -87,26 +94,36 @@ namespace CTSWeb.Util
             {
                 Descriptions[c] = new LanguageText(oLanguage.Item1, roLang);
                 if (Descriptions[c].CultureName != oLanguage.Item2) _oLog.Debug($"Invalid culture name: expected '{Descriptions[c].CultureName}' and found '{oLanguage.Item2}'");
-                if ((iFields & (int)LanguageMasks.Comment) != 0) Descriptions[c].Comment = Language.Description(roObject, ct_desctype.ctdesc_comment, oLanguage.Item1);
-                if ((iFields & (int)LanguageMasks.LongDesc) != 0) Descriptions[c].LongDesc = Language.Description(roObject, ct_desctype.ctdesc_long, oLanguage.Item1);
-                if ((iFields & (int)LanguageMasks.ShortDesc) != 0) Descriptions[c].ShortDesc = Language.Description(roObject, ct_desctype.ctdesc_short, oLanguage.Item1);
-                if ((iFields & (int)LanguageMasks.XDesc) != 0) Descriptions[c].XDesc = Language.Description(roObject, ct_desctype.ctdesc_extralong, oLanguage.Item1);
+                foreach (var o in LanguageText.TypeInfo)
+                {
+                    if ((iFields & (int)o.Item1) != 0) Descriptions[c].Texts[o.Item3] = Language.Description(roObject, o.Item2, oLanguage.Item1);
+                }
                 c++;
             }
             _oLog.Debug($"Loaded descriptions in {c} language(s) into managed object with desc {Name}");
         }
 
-        public override void  WriteInto(ICtObject roObject)
+        public override void WriteInto(ICtObject roObject, MessageList roMess)
         {
-            base.WriteInto(roObject);
+            base.WriteInto(roObject, roMess);
+            bool bTest = !(roMess is null);
+            string sOld;
+            string sNew;
+
             foreach (LanguageText oText in Descriptions)
             {
                 if (_oLanguage.TryGetLanguageID(oText.CultureName, out lang_t iLang))
                 {
-                    if (oText.ShortDesc != null) roObject.Desc[ct_desctype.ctdesc_short, iLang] = oText.ShortDesc;
-                    if (oText.LongDesc != null) roObject.Desc[ct_desctype.ctdesc_long, iLang] = oText.LongDesc;
-                    if (oText.XDesc != null) roObject.Desc[ct_desctype.ctdesc_extralong, iLang] = oText.XDesc;
-                    if (oText.Comment != null) roObject.Desc[ct_desctype.ctdesc_comment, iLang] = oText.Comment;
+                    foreach (var o in LanguageText.TypeInfo)
+                    {
+                        if (oText.Texts.ContainsKey(o.Item3))
+                        {
+                            sOld = Language.Description(roObject, o.Item2, iLang);
+                            sNew = oText.Texts[o.Item3];
+                            if (bTest && !(sOld is null) && (sOld != sNew)) roMess.Add("RF0310", o.Item3 + iLang.ToString(), sNew, sOld);
+                            Language.SetDesc(roObject, o.Item2, iLang, sNew);
+                        }
+                    }
                 } // No else: if language isn't found or active, ignore
             }
         }
@@ -137,19 +154,21 @@ namespace CTSWeb.Util
             _oLog.Debug($"Loaded managed object with security {Name}");
         }
 
-        public override void WriteInto(ICtObject roObject)
+        public override void WriteInto(ICtObject roObject, MessageList roMess)
         {
-            base.WriteInto(roObject);
+            base.WriteInto(roObject, roMess);
 
-            ICtStatObject oObj = (ICtStatObject)roObject;
-            oObj.OwnerSite = OwnerSite;
-            oObj.OwnerWorkgroup = OwnerWorkgroup;
-            oObj.CreationDate = CreationDate;
-            oObj.Author = Author;
-            oObj.UpdateDate = UpdateDate;
-            oObj.UpdateAuthor = UpdateAuthor;
+            // Let FC do that
+            //ICtStatObject oObj = (ICtStatObject)roObject;
+            //oObj.OwnerSite = OwnerSite;
+            //oObj.OwnerWorkgroup = OwnerWorkgroup;
+            //oObj.CreationDate = CreationDate;
+            //oObj.Author = Author;
+            //oObj.UpdateDate = UpdateDate;
+            //oObj.UpdateAuthor = UpdateAuthor;
         }
     }
+
 
 
     public static class Manager
@@ -159,7 +178,7 @@ namespace CTSWeb.Util
 
         private static readonly Dictionary<Type, int> _oType2MgrID = new Dictionary<Type, int>();
 
-        // Give name to ref tables
+        // Give name to ref tables, provides lists
         private static readonly Dictionary<string, int> _oCode2MgrID = new Dictionary<string, int>()
         {
             { "Phase",              (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_PHASE },
@@ -172,6 +191,21 @@ namespace CTSWeb.Util
             { "ExRateType",         (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATETYPE },
             { "ExRateVersion",      (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATEVERSION },
         };
+
+
+        // Deals with Period, provides individual elements
+        private static readonly Dictionary<string, int> _oCode2DimensionID = new Dictionary<string, int>()
+        {
+            { "Phase",              (int)CTCOMMONMODULELib.ct_dimension.DIM_PHASE},
+            { "Entity",             (int)CTCOMMONMODULELib.ct_dimension.DIM_ENTITY},
+            { "Currency",           (int)CTCOMMONMODULELib.ct_dimension.DIM_CURNCY},
+            { "Account",            (int)CTCOMMONMODULELib.ct_dimension.DIM_ACCOUNT},
+            { "Flow",               (int)CTCOMMONMODULELib.ct_dimension.DIM_FLOW},
+            { "Nature",             (int)CTCOMMONMODULELib.ct_dimension.DIM_NATURE },
+            { "UpdPer",             (int)CTCOMMONMODULELib.ct_dimension.DIM_UPDPER},
+            { "Period",             (int)CTCOMMONMODULELib.ct_dimension.DIM_PERIOD},
+        };
+
 
         private static ICtObjectManager PrGetMgr<tObject>(ConfigClass roConfig) where tObject : ManagedObject, new()
         {
@@ -186,24 +220,32 @@ namespace CTSWeb.Util
             return oManager;
         }
 
-        private static ICtObject PrGet<tObject>(ConfigClass roConfig, int viID, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true)
+        private static ICtObject PrGet<tObject>(ConfigClass roConfig, int viID, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true, int viMgrID = 0)
             where tObject : ManagedObject, new()
         {
-            ICtObjectManager oManager = PrGetMgr<tObject>(roConfig);
+            ICtObjectManager oManager = (viMgrID == 0) ? PrGetMgr<tObject>(roConfig) : (ICtObjectManager)(((ICtProviderContainer)roConfig.Session).get_Provider(1, viMgrID));
             ICtObject oRet = (ICtObject)oManager.GetObject(viID, viFlags, 0);
             if (vbRaiseErrorIfNotFound && oRet is null) throw new KeyNotFoundException($"No object of type { typeof(tObject).Name } found with ID '{viID}'");
             return oRet;
         }
 
-        private static ICtObject PrGet<tObject>(ConfigClass roConfig, string vsName, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true)
+        private static ICtObject PrGet<tObject>(ConfigClass roConfig, string vsName, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true, int viMgrID = 0)
             where tObject : ManagedObject, new()
         {
-            ICtObjectManager oManager = PrGetMgr<tObject>(roConfig);
+            ICtObjectManager oManager = (viMgrID == 0) ? PrGetMgr<tObject>(roConfig) : (ICtObjectManager)(((ICtProviderContainer)roConfig.Session).get_Provider(1, viMgrID));
             ICtOqlFactoryFacade oqlFactory = new CtOqlFactoryFacade();
             ICtOqlBooleanExpr oOql = oqlFactory.Equal(oqlFactory.Prop((int)ct_object_property.CT_NAME_PROP), oqlFactory.Value(vsName));
-            ICtGenCollection oCollection = oManager.GetObjects(oOql, viFlags, 0, null);
-            if (vbRaiseErrorIfNotFound && oCollection.Count == 0) throw new KeyNotFoundException($"No object of type { typeof(tObject).Name } found with name '{vsName}'");
-            ICtObject oRet = (oCollection.Count == 0) ? null : (ICtObject)oCollection.GetAt(1);
+            ICtGenCollection oCollection = null;
+            try
+            {
+                oCollection = oManager.GetObjects(oOql, viFlags, 0, null);
+            }
+            catch (System.Runtime.InteropServices.COMException e) 
+            {
+                _oLog.Debug(e);
+            }
+            if (vbRaiseErrorIfNotFound && (oCollection is null)) throw new KeyNotFoundException($"No object of type { typeof(tObject).Name } found with name '{vsName}'");
+            ICtObject oRet = (oCollection is null) ? null : (ICtObject)oCollection.GetAt(1);
             if (vbRaiseErrorIfNotFound && oRet is null) throw new ArgumentNullException($"Object of type { typeof(tObject).Name } found with name '{vsName}' is null");
             return oRet;
         }
@@ -305,6 +347,27 @@ namespace CTSWeb.Util
         }
 
 
+        
+        public static Models.RefValue GetRefValue(ConfigClass roConfig, string vsTableCode, string vsName, Language voLang)
+        {
+            if (!_oCode2DimensionID.TryGetValue(vsTableCode, out int iDimID))
+            {
+                throw new ArgumentException($"Unrecognized FC table '{vsTableCode}'");
+            }
+            CTCORELib.ICtDimensionManager oDimManager = (CTCORELib.ICtDimensionManager)(((ICtProviderContainer)roConfig.Session).get_Provider(1, (int)CTCORELib.ct_core_manager.CT_DIMENSION_MANAGER));
+            CTCORELib.ICtDimension oDim = oDimManager.get_Dimension(iDimID);
+            CTCORELib.ICtRefValue oRefVal = oDim.get_RefValueFromName(vsName, 0);
+
+            Models.RefValue oRet = null;
+            if (!(oRefVal is null))
+            {
+                oRet = new Models.RefValue();
+                oRet.ReadFrom(oRefVal, voLang);
+            }
+            return oRet;
+        }
+
+
         public static void Save<tObject>(ConfigClass roConfig, tObject roObject, MessageList roMess) where tObject : ManagedObject, new()
         {
             if (roObject != null)
@@ -325,7 +388,7 @@ namespace CTSWeb.Util
                         }
                         else
                         {
-                            if (null == (oFCObj = (ICtObject)PrGetMgr<tObject>(roConfig)?.NewObject())) throw new Exception($"Can't get new {typeof(tObject)}");
+                            if (null == (oFCObj = (ICtObject)PrGetMgr<tObject>(roConfig)?.NewObject(1))) throw new Exception($"Can't get new {typeof(tObject)}");
                         }
                     }
                 }
@@ -334,8 +397,9 @@ namespace CTSWeb.Util
                     if (null == (oFCObj = PrGet<tObject>(roConfig, roObject.ID, ACCESSFLAGS.OM_WRITE))) throw new Exception($"Can't open {typeof(tObject)} for writing");
                 }
                 _oLog.Debug($"Writing object {roObject.Name}");
-                roObject.WriteInto(oFCObj);
-                oFCObj.IsObjectValid();
+                roObject.WriteInto(oFCObj, roMess);
+                // Bugs on Reporting
+                // oFCObj.IsObjectValid();
                 ((ICtObjectManager)oFCObj.Manager).SaveObject(oFCObj);
                 oFCObj.WriteUnlock();
                 _oLog.Debug("Writen");
