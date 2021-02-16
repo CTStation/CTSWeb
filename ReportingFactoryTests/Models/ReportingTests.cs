@@ -29,8 +29,6 @@ using System.Threading.Tasks;
 namespace CTSWeb.Models.Tests
 {
 
-
-
     [TestClass()]
     public class ReportingTests
     {
