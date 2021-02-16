@@ -91,7 +91,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CTSWeb\ReportingFactory.csproj">
+    <ProjectReference Include="..\ReportingFactory.csproj">
       <Project>{15A8DDCA-19AA-4B28-9EB2-7D291DDA0D78}</Project>
       <Name>ReportingFactory</Name>
     </ProjectReference>

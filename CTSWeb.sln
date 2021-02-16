@@ -10,7 +10,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		CTSWeb.sln.vsspell = CTSWeb.sln.vsspell
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReportingFactoryTests", "..\ReportingFactoryTests\ReportingFactoryTests.csproj", "{3C37B914-253E-49FF-9322-16A5E36CF3E5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReportingFactoryTests", ".\ReportingFactoryTests\ReportingFactoryTests.csproj", "{3C37B914-253E-49FF-9322-16A5E36CF3E5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
