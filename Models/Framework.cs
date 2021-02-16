@@ -20,7 +20,7 @@ using CTSWeb.Util;
 
 namespace CTSWeb.Models
 {
-    
+
     public class Framework : ManagedObject // Inherits ID and Name and LDesc
     {
         private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
@@ -28,6 +28,11 @@ namespace CTSWeb.Models
         static Framework()
         {
             Manager.Register<Framework>(-524238);
+            Manager.RegisterDelegate<Framework>((Context roContext, ICtObjectManager voMgr, string vsID1, string vsID2) =>
+                                                        (ICtObject)((ICtFrameworkManager)voMgr).FrameworkFromPhaseVersion[
+                                                            roContext.GetRefValue("Phase", vsID1).FCRefValue(),
+                                                            roContext.GetRefValue("FrameworkVersion", vsID2).FCRefValue()]
+                                                    );
         }
 
         // Argument-less constructor
@@ -40,53 +45,28 @@ namespace CTSWeb.Models
 
         private IRefObjRef _oFCFramework;
 
+        public IRefObjRef FCValue() => _oFCFramework;
+
+
         public override void ReadFrom(ICtObject roObject, Language roLang)
         {
             base.ReadFrom(roObject, roLang);
 
             IRefObjRef oRef = (IRefObjRef)roObject;
-            Phase = oRef.Phase?.Name;
-            Version = oRef.Version?.Name;
-            Status = oRef.RefStatus;
-            foreach (ICtObject oLevel in oRef.ContLevelList) 
-            { 
-                ManagedObjectWithDesc o = new ManagedObjectWithDesc(); 
-                o.ReadFrom(oLevel, roLang); 
-                ControlLevels.Add(o); 
-            }
             _oFCFramework = oRef;
-        }
-
-
-        // Manage complex identifier: users choose framework from Phase and version, not from name
-        // Avoid burdening Manager with a complex identifier concept, deal with the lists here
-        // List of frameworks is usualy short
-        // TODO Move this to Manage with a delegate that builds the identifier as string[], then buld the delegate from attributes
-        public static List<(string, string)> BuildPickupList(List<Framework> voList, kref_framework_status viStatus = 0)
-        {
-            List<(string, string)> oRet = new List<(string, string)>();
-            foreach (Framework oFramework in voList) if (viStatus == 0 || oFramework.Status == viStatus) oRet.Add((oFramework.Phase, oFramework.Version));
-            return oRet;
-        }
-
-
-        public static Framework GetFromPhaseVersion(List<Framework> voList, string vsPhase, string vsVersion)
-        {
-            Framework oRet = null;
-            foreach (Framework oFramework in voList) if (oFramework.Phase == vsPhase && oFramework.Version == vsVersion) { oRet = oFramework; break; }
-            return oRet;
-        }
-
-
-        public static Framework GetFromPhaseVersion(List<Framework> voList, string vsPhase, string vsVersion, out IRefObjRef roFCFramework)
-        {
-            Framework oRet = null;
-            foreach (Framework oFramework in voList) if (oFramework.Phase == vsPhase && oFramework.Version == vsVersion) { oRet = oFramework; break; }
-            roFCFramework = oRet?._oFCFramework;
-            return oRet;
+            if (!(roObject is null))
+            {
+                Phase = oRef.Phase?.Name;
+                Version = oRef.Version?.Name;
+                Status = oRef.RefStatus;
+                foreach (ICtObject oLevel in oRef.ContLevelList)
+                {
+                    ManagedObjectWithDesc o = new ManagedObjectWithDesc();
+                    o.ReadFrom(oLevel, roLang);
+                    ControlLevels.Add(o);
+                }
+            }
         }
     }
-
-
 }
 

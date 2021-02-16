@@ -42,6 +42,7 @@ namespace CTSWeb.Util
     //          $[{0}] where 0 = typeof(ReportingLight) would return Reporting.
     //          $[lower:{0}] where 0 = typeof(ReportingLight) would return reporting.
     //          $[lower:AU] would return audit id in english, and nature in french (MessageList needs a list of dimensions for one datasource)
+    // TODO: trnsform the initialization code into a fair data structure in the static constructor (see Manager)
     public static class MessageSetup
     {
         public static readonly List<(string, MessageSeverity, ((string, string, string), (string, string, string)))> Setup = new List<(string, MessageSeverity, ((string, string, string), (string, string, string)))>()
@@ -70,6 +71,9 @@ namespace CTSWeb.Util
            ("RF0310",MessageSeverity.Info, ( ("en-US", "Changed {0} from '{1}' to '{2}'", ""),
                                               ("fr-FR", "Change {0} de '{1}' à '{2}'", "") )
             ),
+           ("RF0311",MessageSeverity.Info, ( ("en-US", "Error {0} while saving", ""),
+                                              ("fr-FR", "Erreur {0} lors de la sauvegarde", "") )
+            ),
         };
     }
 
@@ -90,7 +94,7 @@ namespace CTSWeb.Util
     {
         private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        private CultureInfo _oCulture;
+        private readonly CultureInfo _oCulture;
         private readonly Dictionary<string, (MessageSeverity, string, string)> _oSetup;
 
         public List<Message> Messages;

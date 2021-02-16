@@ -86,7 +86,7 @@ namespace CTSWeb.Controllers
             using (Context oContext = new Context(this.HttpContext))
             {
                 MessageList oMessages = oContext.NewMessageList();
-                return new CTS_JsonResult(oContext.Get<Reporting>(id, oMessages), oMessages);
+                return new CTS_JsonResult(oContext.Get<Reporting>(id), oMessages);
             }
         }
         );

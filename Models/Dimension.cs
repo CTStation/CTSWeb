@@ -33,52 +33,6 @@ namespace CTSWeb.Models
 
         // Argument-less constructor
         public Dimension() { }
-
-        private ICtRefTable _oRefTable;
-        private ICtDimension _oDim;
-
-        public override void ReadFrom(ICtObject roObject, Language roLang)
-        {
-            base.ReadFrom(roObject, roLang);
-
-            ICtDimension oDim = (ICtDimension)roObject;
-            _oRefTable = oDim.RefTable;
-            _oDim = oDim;
-        }
-
-        // Cache only recent queries
-        private readonly Dictionary<string, int> _oCode2ID = new Dictionary<string, int>();
-        public bool ValueExists(string vsCode)
-        {
-            bool bRet = false;
-            if (_oCode2ID.ContainsKey(vsCode))
-            {
-                bRet = true;
-            }
-            else
-            {
-                ICtRefValue oRefVal = _oRefTable.RefValueFromName[vsCode, 0];
-                if (bRet = (oRefVal != null)) _oCode2ID[vsCode] = oRefVal.ID;
-            }
-            return bRet;
-        }
-
-
-        private readonly Dictionary<int, string> _oID2Code = new Dictionary<int, string>();
-        public bool ValueExists(int viID)
-        {
-            bool bRet = false;
-            if (_oID2Code.ContainsKey(viID))
-            {
-                bRet = true;
-            }
-            else
-            {
-                ICtRefValue oRefVal = _oRefTable.RefValue[viID];
-                if (bRet = (oRefVal != null)) _oID2Code[viID] = oRefVal.Name;
-            }
-            return bRet;
-        }
     }
 
 
@@ -100,13 +54,16 @@ namespace CTSWeb.Models
         {
             base.ReadFrom(roObject, roLang);
 
-            ICtDataSource oSource = (ICtDataSource)roObject;
-            Dimensions = new List<Dimension>();
-            foreach (ICtObjectBase o in oSource.Dimensions)
+            if (!(roObject is null))
             {
-                Dimension oDim = new Dimension();
-                oDim.ReadFrom((ICtObject)o, roLang);
-                this.Dimensions.Add(oDim);
+                ICtDataSource oSource = (ICtDataSource)roObject;
+                Dimensions = new List<Dimension>();
+                foreach (ICtObjectBase o in oSource.Dimensions)
+                {
+                    Dimension oDim = new Dimension();
+                    oDim.ReadFrom((ICtObject)o, roLang);
+                    this.Dimensions.Add(oDim);
+                }
             }
         }
     }
@@ -139,13 +96,14 @@ namespace CTSWeb.Models
         // Argument-less constructor
         public RefValue() { }
 
-        public ICtRefValue FCRefValue;
+        private ICtRefValue _oFCRefValue;
+        public ICtRefValue FCRefValue() => _oFCRefValue;
 
         public override void ReadFrom(ICtObject roObject, Language roLang)
         {
             base.ReadFrom(roObject, roLang);
 
-            FCRefValue = (ICtRefValue)roObject;
+            _oFCRefValue = (ICtRefValue)roObject;
         }
     }
 

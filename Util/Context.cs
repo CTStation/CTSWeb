@@ -9,6 +9,7 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.Web;
 using System.Threading;
@@ -42,12 +43,12 @@ namespace CTSWeb.Util
 
             private readonly (string, string, string, string, string, int) _oInfo;
 
-            public string BrokerName            { get => _oInfo.Item1; }
-            public string DatasourceName        { get => _oInfo.Item2; }
-            public string DatasourcePassword    { get => _oInfo.Item3; }
-            public string UserName              { get => _oInfo.Item4; }
-            public string Password              { get => _oInfo.Item5; }
-            public int    ThreadID              { get => _oInfo.Item6; }
+            public string BrokerName { get => _oInfo.Item1; }
+            public string DatasourceName { get => _oInfo.Item2; }
+            public string DatasourcePassword { get => _oInfo.Item3; }
+            public string UserName { get => _oInfo.Item4; }
+            public string Password { get => _oInfo.Item5; }
+            public int ThreadID { get => _oInfo.Item6; }
 
             public PrConnectionInfo(string rsBrokerName, string rsDatasourceName, string rsDatasourcePassword, string rsUserName, string rsPassword)
             {
@@ -56,18 +57,17 @@ namespace CTSWeb.Util
 
             // Reading params in header is not ideal, as queries can be replayed
             // TODO: use session token
-            public PrConnectionInfo(HttpContextBase roContext)
+            public PrConnectionInfo(NameValueCollection roColl)
             {
-                System.Collections.Specialized.NameValueCollection oHead = roContext.Request.Headers;
-
-                _oInfo =    (   oHead.Get("P001.ctstation.fr"), 
-                                oHead.Get("P002.ctstation.fr"), 
-                                oHead.Get("P003.ctstation.fr"),
-                                oHead.Get("P004.ctstation.fr"),
-                                oHead.Get("P005.ctstation.fr"),
+                _oInfo = (roColl.Get("P001.ctstation.fr"),
+                                roColl.Get("P002.ctstation.fr"),
+                                roColl.Get("P003.ctstation.fr"),
+                                roColl.Get("P004.ctstation.fr"),
+                                roColl.Get("P005.ctstation.fr"),
                                 Thread.CurrentThread.ManagedThreadId
                             );
             }
+
 
             // No need to test for null when type is fixed
             public bool Equals(PrConnectionInfo roObj) => _oInfo == roObj._oInfo;
@@ -82,35 +82,53 @@ namespace CTSWeb.Util
         }
 
         #region static class fields
-        private static readonly TimedCache<PrConnectionInfo, ConfigClass> S_oCache = 
+        private static readonly TimedCache<PrConnectionInfo, ConfigClass> S_oCache =
                 new TimedCache<PrConnectionInfo, ConfigClass>(ConfigClass.Close);   // Closes unused connections after 5 minutes
         #endregion
 
-        private readonly PrConnectionInfo _oKey;
+        private PrConnectionInfo _oKey;
+        private bool _bHadFailedRequests = false;
 
-        public readonly Language Language;
+        // Readonly is no longer an option when many constructors share a common function
+        // Has to use set-only properties
+        private ConfigClass _oConfig;
+        private Language _oLanguage;
 
-        public CultureInfo Culture { get => Language.Culture; }
+        public Language Language { get => _oLanguage; }
 
-        public CTCLIENTSERVERLib.lang_t WorkingLanguage { get => Language.WorkingLanguage;  }
+        public CultureInfo Culture { get => _oLanguage.Culture; }
 
-        public List<string> GetActiveLanguages() => Language.GetActiveLanguages();
+        public CTCLIENTSERVERLib.lang_t WorkingLanguage { get => _oLanguage.WorkingLanguage; }
 
-        public ConfigClass Config { get; }
+        public List<string> GetActiveLanguages() => _oLanguage.GetActiveLanguages();
 
+        public ConfigClass Config { get => _oConfig; }
+
+        public bool HasFailedRquests { get => _bHadFailedRequests; set { _oLog.Debug("Context has a failed request"); _bHadFailedRequests = value; } }
 
 
         public Context(HttpContextBase roContext)
         {
-            _oKey = new PrConnectionInfo(roContext);
+            PrContext(roContext.Request.Headers);
+        }
+
+        // For tests
+        public Context(NameValueCollection voColl)
+        {
+            PrContext(voColl);
+        }
+
+        private void PrContext(NameValueCollection voColl)
+        {
+            _oKey = new PrConnectionInfo(voColl);
 
             bool bFoundInCache = false;
             while (S_oCache.TryPop(_oKey, out ConfigClass oConfig))
             {
-                // This test should prevent using a stalled connection TODO remove connectopn by thread or add it here
+                // This test should prevent using a stalled connection TODO remove connection by thread or add it here
                 if (oConfig.IsActive(_oKey.BrokerName, _oKey.DatasourceName, _oKey.UserName, _oKey.Password))
                 {
-                    Config = oConfig;
+                    _oConfig = oConfig;
                     bFoundInCache = true;
                     _oLog.Debug($"Reusing {_oKey.BrokerName}_{_oKey.DatasourceName} {_oKey.UserName} in thread {_oKey.ThreadID}");
                     break;
@@ -120,18 +138,16 @@ namespace CTSWeb.Util
             {
                 // Throws exceptions if needed
                 _oLog.Debug($"Opening new config {_oKey.BrokerName}_{_oKey.DatasourceName} {_oKey.UserName} in thread {_oKey.ThreadID}");
-                Config = new ConfigClass(_oKey.BrokerName, _oKey.DatasourceName, _oKey.DatasourcePassword, _oKey.UserName, _oKey.Password, "");
-                _oLog.Debug("Connectong...");
-                Config?.Connect();
+                _oConfig = new ConfigClass(_oKey.BrokerName, _oKey.DatasourceName, _oKey.DatasourcePassword, _oKey.UserName, _oKey.Password, "");
+                _oLog.Debug("Connecting...");
+                _oConfig?.Connect();
                 _oLog.Debug("Connected");
             }
 
-            string sWorkingLanguageISO = roContext.Request.Headers.Get("P007.ctstation.fr");
-            string sModifyedLanguagesISO = roContext.Request.Headers.Get("P008.ctstation.fr");
-            Language = new Language(Config, sWorkingLanguageISO, sModifyedLanguagesISO);
-            Config.Session.UserLanguage = Language.WorkingLanguage;
-
-
+            string sWorkingLanguageISO = voColl.Get("P007.ctstation.fr");
+            string sModifyedLanguagesISO = voColl.Get("P008.ctstation.fr");
+            _oLanguage = new Language(Config, sWorkingLanguageISO, sModifyedLanguagesISO);
+            _oConfig.Session.UserLanguage = Language.WorkingLanguage;
         }
 
 
@@ -146,36 +162,40 @@ namespace CTSWeb.Util
 
         #region  Manager functions
 
-        public List<tObject> GetAll<tObject>()                          where tObject : ManagedObject, new() => Manager.GetAll<tObject>(this);
+        public List<tObject> GetAll<tObject>()                          where tObject : ManagedObject, new() => Manager.GetAll<tObject>(this); 
 
-        public tObject Get<tObject>(int viID, MessageList roMess)       where tObject : ManagedObject, new() => Manager.Get<tObject>(this, viID, roMess);
-        public tObject Get<tObject>(string vsName, MessageList roMess)  where tObject : ManagedObject, new() => Manager.Get<tObject>(this, vsName, roMess);
+        public tObject Get<tObject>(int viID)                           where tObject : ManagedObject, new() => Manager.Get<tObject>(this, viID);
+        public tObject Get<tObject>(string vsName)                      where tObject : ManagedObject, new() => Manager.Get<tObject>(this, vsName);
+        public tObject Get<tObject>(string vsID1, string vsID2)         where tObject : ManagedObject, new() => Manager.Get<tObject>(this, vsID1, vsID2);
 
-        public bool Exists<tObject>(int viID)                           where tObject : ManagedObject, new() => Manager.Exists<tObject>(Config, viID);
-        public bool Exists<tObject>(string vsName)                      where tObject : ManagedObject, new() => Manager.Exists<tObject>(Config, vsName);
+        public bool Exists<tObject>(int viID)                           where tObject : ManagedObject, new() => Manager.Exists<tObject>(this, viID);
+        public bool Exists<tObject>(string vsName)                      where tObject : ManagedObject, new() => Manager.Exists<tObject>(this, vsName);
+        public bool Exists<tObject>(string vsID1, string vsID2)         where tObject : ManagedObject, new() => Manager.Exists<tObject>(this, vsID1, vsID2);
 
-        public void Save<tObject>(tObject voObj, MessageList roMess)    where tObject : ManagedObject, new() => Manager.Save<tObject>(Config, voObj, roMess);
-
-        #endregion
+        public void Save<tObject>(tObject voObj, MessageList roMess)    where tObject : ManagedObject, new() => Manager.Save<tObject>(this, voObj, roMess);
 
         // Cache for RetTable values
-        private Dictionary<string, HashSet<string>> _oRefValues;
+        private readonly Dictionary<string, HashSet<string>> _oRefValues = new Dictionary<string, HashSet<string>>();
 
         public HashSet<string> GetRefValues(string vsTableName)
         {
             HashSet<string> oRet;
-            if (_oRefValues == null) _oRefValues = new Dictionary<string, HashSet<string>>();
             if (_oRefValues.ContainsKey(vsTableName))
             {
                 oRet = _oRefValues[vsTableName];
             }
             else
             {
-                oRet = Manager.GetRefValueCodes(Config, vsTableName);
+                oRet = Manager.GetRefValueCodes(this, vsTableName);
                 _oRefValues.Add(vsTableName, oRet);
             }
             return oRet;
         }
+
+        public Models.RefValue GetRefValue(string vsTable, string vsName)                             => Manager.GetRefValue(this, vsTable, vsName);
+
+        #endregion
+
 
         public static Predicate<string> GetPeriodValidator = (string s) =>
         {
@@ -185,18 +205,26 @@ namespace CTSWeb.Util
                             Int32.TryParse(s.Substring(5), out i) && (1 <= i) && (i <= 12);
         };
 
-        // This is called by the using() pattern, as the class implements iDisposible
-            public void Dispose()
-        {
-            if (!(Config is null) && !(_oKey is null))
-            {
-                // Get read of all the facade objects created, and their COM objects
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
 
-                // Returns the connection to the pool of available connections
-                S_oCache.Push(_oKey, Config);
-                _oLog.Debug($"Returned {_oKey.BrokerName}_{_oKey.DatasourceName} {_oKey.UserName} in thread {_oKey.ThreadID} to the pool of available connections");
+        // This is called by the using() pattern, as the class implements iDisposible
+        public void Dispose()
+        {
+            // Get read of all the facade objects created, and their COM objects
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
+            if (!(Config is null) && !(_oKey is null))      
+            {
+                if (!_bHadFailedRequests)           // Test for errors
+                {
+                    // Returns the connection to the pool of available connections
+                    S_oCache.Push(_oKey, Config);
+                    _oLog.Debug($"Returned {_oKey.BrokerName}_{_oKey.DatasourceName} {_oKey.UserName} in thread {_oKey.ThreadID} to the pool of available connections");
+                }
+                else
+                {
+                    Config.Disconnect();
+                }
             }
         }
     }

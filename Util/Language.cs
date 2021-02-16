@@ -47,7 +47,7 @@ namespace CTSWeb.Util
 
         public LanguageText(lang_t viLang, Language voLang)
         {
-            string s = null;
+            string s;
             if (!voLang.TryGetISO(viLang, out s)) throw new KeyNotFoundException($"Language {viLang} has no associated culture");
             CultureName = s;
             Texts = new Dictionary<string, string>();
@@ -56,8 +56,7 @@ namespace CTSWeb.Util
         public LanguageText(string vsCultureName, Language voLang)
         {
             if (vsCultureName == null) throw new ArgumentNullException("Culture name");
-            lang_t iLang = 0;
-            if (!voLang.TryGetLanguageID(vsCultureName, out iLang)) throw new KeyNotFoundException($"No language has the {vsCultureName} culture");
+            if (!voLang.TryGetLanguageID(vsCultureName, out lang_t iLang)) throw new KeyNotFoundException($"No language has the {vsCultureName} culture");
             CultureName = vsCultureName;
             Texts = new Dictionary<string, string>();
         }
@@ -74,7 +73,7 @@ namespace CTSWeb.Util
         #region static class fields used to handle FC enumerations
         private static readonly log4net.ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        private static int[] _aiDescProps = {
+        private static readonly int[] _aiDescProps = {
             (int)ct_object_property.CT_SDESC1_PROP,
             (int)ct_object_property.CT_SDESC2_PROP,
             (int)ct_object_property.CT_SDESC3_PROP,
@@ -100,7 +99,7 @@ namespace CTSWeb.Util
             (int)ct_object_property.CT_CDESC5_PROP,
             (int)ct_object_property.CT_CDESC6_PROP,
         };
-        private static lang_t[] _aiIndex2LangIds = {
+        private static readonly lang_t[] _aiIndex2LangIds = {
             CTCLIENTSERVERLib.lang_t.lang_1,
             CTCLIENTSERVERLib.lang_t.lang_2,
             CTCLIENTSERVERLib.lang_t.lang_3,
@@ -109,7 +108,7 @@ namespace CTSWeb.Util
             CTCLIENTSERVERLib.lang_t.lang_6,
         };
 
-        private static Dictionary<lang_t, int> _oLangId2Index = new Dictionary<lang_t, int>()
+        private static readonly Dictionary<lang_t, int> _oLangId2Index = new Dictionary<lang_t, int>()
         {
             { CTCLIENTSERVERLib.lang_t.lang_1, 0 },
             { CTCLIENTSERVERLib.lang_t.lang_2, 1 },
@@ -119,7 +118,7 @@ namespace CTSWeb.Util
             { CTCLIENTSERVERLib.lang_t.lang_6, 5 }
         };
 
-        private static Dictionary<string, string> _oDesc2ISO = new Dictionary<string, string>()
+        private static readonly Dictionary<string, string> _oDesc2ISO = new Dictionary<string, string>()
         {
             {"English", "en-US"},
             {"French", "fr-FR"},
@@ -225,7 +224,10 @@ namespace CTSWeb.Util
 
         public static string Description(ICtObjectBase roFCObj, LanguageText.Type viType, lang_t viLang) => (string)(roFCObj?.PropVal[PrDescProp(viType, viLang)]);
 
-        public static void SetDesc(ICtObjectBase roFCObj, LanguageText.Type viType, lang_t viLang, string vsVal) { if (!(roFCObj is null)) roFCObj.PropVal[PrDescProp(viType, viLang)] = vsVal; }
+        public static void SetDesc(ICtObjectBase roFCObj, LanguageText.Type viType, lang_t viLang, string vsVal)
+        { 
+            if (!(roFCObj is null)) roFCObj.PropVal[PrDescProp(viType, viLang)] = (vsVal is null) ? "" : vsVal; 
+        }
 
 
         public readonly lang_t WorkingLanguage;

@@ -47,21 +47,30 @@ namespace CTSWeb.Util
         public string Name;
         public string LDesc;             // Ldesc in working language
 
-        public virtual void ReadFrom(ICtObject roObject, Language roLang) {
+        public virtual void ReadFrom(ICtObject roObject, Language roLang) 
+        {
             _oLanguage = roLang;
 
-            ID = roObject.ID;
-            Name = roObject.Name;
-            LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roLang.WorkingLanguage);
-            _oLog.Debug($"Loaded managed object {Name}");
+            if (!(roObject is null))
+            {
+                ID = roObject.ID;
+                Name = roObject.Name;
+                LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roLang.WorkingLanguage);
+                _oLog.Debug($"Loaded managed object {Name}");
+            }
         }
 
-        public virtual void WriteInto(ICtObject roObject, MessageList roMess) {
+        public virtual void WriteInto(ICtObject roObject, MessageList roMess, Context roContext) 
+        {
             bool bTest = !(roMess is null);
 
-            // Nether change object ID 
+            // Access to generic type static fields is possible only through reflexion
+            Type oType = this.GetType();
+            FieldInfo oField = oType.GetField("_bDontSaveName", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+
+            // Never change object ID 
             // roObject.ID = ID;
-            if (!(Name is null))
+            if (!(Name is null) && (oField is null))
             {
                 if (bTest && !(roObject.Name is null) && roObject.Name != Name) roMess.Add("RF0310", "Name", Name, roObject.Name);
                 roObject.Name = Name;
@@ -94,18 +103,21 @@ namespace CTSWeb.Util
             {
                 Descriptions[c] = new LanguageText(oLanguage.Item1, roLang);
                 if (Descriptions[c].CultureName != oLanguage.Item2) _oLog.Debug($"Invalid culture name: expected '{Descriptions[c].CultureName}' and found '{oLanguage.Item2}'");
-                foreach (var o in LanguageText.TypeInfo)
+                if (!(roObject is null))
                 {
-                    if ((iFields & (int)o.Item1) != 0) Descriptions[c].Texts[o.Item3] = Language.Description(roObject, o.Item2, oLanguage.Item1);
+                    foreach (var o in LanguageText.TypeInfo)
+                    {
+                        if ((iFields & (int)o.Item1) != 0) Descriptions[c].Texts[o.Item3] = Language.Description(roObject, o.Item2, oLanguage.Item1);
+                    }
                 }
                 c++;
             }
             _oLog.Debug($"Loaded descriptions in {c} language(s) into managed object with desc {Name}");
         }
 
-        public override void WriteInto(ICtObject roObject, MessageList roMess)
+        public override void WriteInto(ICtObject roObject, MessageList roMess, Context roContext)
         {
-            base.WriteInto(roObject, roMess);
+            base.WriteInto(roObject, roMess, roContext);
             bool bTest = !(roMess is null);
             string sOld;
             string sNew;
@@ -120,7 +132,7 @@ namespace CTSWeb.Util
                         {
                             sOld = Language.Description(roObject, o.Item2, iLang);
                             sNew = oText.Texts[o.Item3];
-                            if (bTest && !(sOld is null) && (sOld != sNew)) roMess.Add("RF0310", o.Item3 + iLang.ToString(), sNew, sOld);
+                            if (bTest && (!(sNew is null)) && (sOld != sNew)) roMess.Add("RF0310", o.Item3 + ((int)iLang).ToString(), sNew, sOld);
                             Language.SetDesc(roObject, o.Item2, iLang, sNew);
                         }
                     }
@@ -144,19 +156,22 @@ namespace CTSWeb.Util
         {
             base.ReadFrom(roObject, roLang);
 
-            ICtStatObject oObj = (ICtStatObject)roObject;
-            OwnerSite = oObj.OwnerSite;
-            OwnerWorkgroup = oObj.OwnerWorkgroup;
-            CreationDate = oObj.CreationDate;
-            Author = oObj.Author;
-            UpdateDate = oObj.UpdateDate;
-            UpdateAuthor = oObj.UpdateAuthor;
-            _oLog.Debug($"Loaded managed object with security {Name}");
+            if (!(roObject is null))
+            {
+                ICtStatObject oObj = (ICtStatObject)roObject;
+                OwnerSite = oObj.OwnerSite;
+                OwnerWorkgroup = oObj.OwnerWorkgroup;
+                CreationDate = oObj.CreationDate;
+                Author = oObj.Author;
+                UpdateDate = oObj.UpdateDate;
+                UpdateAuthor = oObj.UpdateAuthor;
+                _oLog.Debug($"Loaded managed object with security {Name}");
+            }
         }
 
-        public override void WriteInto(ICtObject roObject, MessageList roMess)
+        public override void WriteInto(ICtObject roObject, MessageList roMess, Context roContext)
         {
-            base.WriteInto(roObject, roMess);
+            base.WriteInto(roObject, roMess, roContext);
 
             // Let FC do that
             //ICtStatObject oObj = (ICtStatObject)roObject;
@@ -171,86 +186,152 @@ namespace CTSWeb.Util
 
 
 
+
     public static class Manager
     {
         #region Private
         private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private static readonly Dictionary<Type, int> _oType2MgrID = new Dictionary<Type, int>();
+        // Allow access with 2 names, like Reporting or Framework
+        private static readonly Dictionary<Type, Func<Context, ICtObjectManager, string, string, ICtObject>> _oType2Delegate = 
+                            new Dictionary<Type, Func<Context, ICtObjectManager, string, string, ICtObject>>();
 
-        // Give name to ref tables, provides lists
-        private static readonly Dictionary<string, int> _oCode2MgrID = new Dictionary<string, int>()
+        private static readonly Dictionary<string, PrDimensionAccess> _oCode2DimAccess = new Dictionary<string, PrDimensionAccess>();
+
+        private class PrDimensionAccess
         {
-            { "Phase",              (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_PHASE },
-            { "Entity",             (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_ENTITY },
-            { "Currency",           (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_CURRENCY },
-            { "FrameworkVersion",   (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_FRAMEWORKVERSION },
-            { "Account",            (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_ACCOUNT },
-            { "Flow",               (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_FLOW },
-            { "Nature",             (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_NATURE },
-            { "ExRateType",         (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATETYPE },
-            { "ExRateVersion",      (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATEVERSION },
-        };
+            public readonly bool HasRefTable;
+            public readonly int RefTableManagerID;
+            public readonly int DimensionId;
+
+            public PrDimensionAccess((bool, int, int) voInfo)
+            {
+                HasRefTable = voInfo.Item1;
+                RefTableManagerID = voInfo.Item2;
+                DimensionId = voInfo.Item3;
+
+                bool bContract = (RefTableManagerID == 0) ^ (DimensionId == 0);
+                bContract &= HasRefTable == (RefTableManagerID != 0);
+                if (!bContract) throw new ArgumentException();
+            }
+        }
 
 
-        // Deals with Period, provides individual elements
-        private static readonly Dictionary<string, int> _oCode2DimensionID = new Dictionary<string, int>()
+        static Manager()
         {
-            { "Phase",              (int)CTCOMMONMODULELib.ct_dimension.DIM_PHASE},
-            { "Entity",             (int)CTCOMMONMODULELib.ct_dimension.DIM_ENTITY},
-            { "Currency",           (int)CTCOMMONMODULELib.ct_dimension.DIM_CURNCY},
-            { "Account",            (int)CTCOMMONMODULELib.ct_dimension.DIM_ACCOUNT},
-            { "Flow",               (int)CTCOMMONMODULELib.ct_dimension.DIM_FLOW},
-            { "Nature",             (int)CTCOMMONMODULELib.ct_dimension.DIM_NATURE },
-            { "UpdPer",             (int)CTCOMMONMODULELib.ct_dimension.DIM_UPDPER},
-            { "Period",             (int)CTCOMMONMODULELib.ct_dimension.DIM_PERIOD},
-        };
+            // Give access mode to ref tables or dimensions. Stores a PrDimensionAccess
+            Dictionary<string, (bool, int, int)> oAccess = new Dictionary<string, (bool, int, int)>()
+            {
+                { "Phase",              (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_PHASE, 0) },
+                { "Entity",             (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_ENTITY, 0) },
+                { "Currency",           (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_CURRENCY, 0) },
+                { "FrameworkVersion",   (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_FRAMEWORKVERSION, 0) },
+                { "Account",            (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_ACCOUNT, 0) },
+                { "Flow",               (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_FLOW, 0) },
+                { "Nature",             (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_NATURE, 0) },
+                { "ExRateType",         (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATETYPE, 0) },
+                { "ExRateVersion",      (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATEVERSION, 0) },
+                { "UpdPer",             (false, 0, (int)CTCOMMONMODULELib.ct_dimension.DIM_UPDPER) },
+                { "Period",             (false, 0, (int)CTCOMMONMODULELib.ct_dimension.DIM_PERIOD) },
+            };
 
+            foreach (string sDimName in oAccess.Keys)
+            {
+                PrDimensionAccess o = new PrDimensionAccess(oAccess[sDimName]);
+                _oCode2DimAccess.Add(sDimName, o);
+            }
+        }
 
-        private static ICtObjectManager PrGetMgr<tObject>(ConfigClass roConfig) where tObject : ManagedObject, new()
+        // Wrapper to signal the context has stained when an FC call throws an exception
+        public static void COMMonitor(Context roContext, Action voAction)
         {
-            tObject oDummy = new tObject();     // Need that to call the class initialization
+            try
+            {
+                voAction();
+            }
+            catch (System.Runtime.InteropServices.COMException e)
+            {
+                roContext.HasFailedRquests = true;
+                throw e;
+            }
+        }
 
-            ICtProviderContainer oContainer = (ICtProviderContainer)roConfig.Session;
+
+        private static ICtObjectManager PrGetMgr<tObject>(Context roContext) where tObject : ManagedObject, new()
+        {
+            ICtProviderContainer oContainer = (ICtProviderContainer)roContext.Config.Session;
             if (!_oType2MgrID.TryGetValue(typeof(tObject), out int iMgrID))
             {
-                throw new ArgumentException($"Unregistered FC type '{typeof(tObject).Name}'");
+                // Maybe the class wasn't initialised. So try creating an object to ensure class init
+                tObject oDummy = new tObject();
+                if (!_oType2MgrID.TryGetValue(typeof(tObject), out iMgrID)) throw new ArgumentException($"Unregistered FC type '{typeof(tObject).Name}'");
             }
-            ICtObjectManager oManager = (ICtObjectManager)oContainer.get_Provider(1, iMgrID);
+            ICtObjectManager oManager = null;
+            COMMonitor(roContext, () => oManager = (ICtObjectManager)oContainer.get_Provider(1, iMgrID));
             return oManager;
         }
 
-        private static ICtObject PrGet<tObject>(ConfigClass roConfig, int viID, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true, int viMgrID = 0)
+        private static ICtObject PrGet<tObject>(Context roContext, int viID, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true, int viMgrID = 0)
             where tObject : ManagedObject, new()
         {
-            ICtObjectManager oManager = (viMgrID == 0) ? PrGetMgr<tObject>(roConfig) : (ICtObjectManager)(((ICtProviderContainer)roConfig.Session).get_Provider(1, viMgrID));
-            ICtObject oRet = (ICtObject)oManager.GetObject(viID, viFlags, 0);
+            ICtObject oRet = null;
+            ICtObjectManager oManager = null;
+            COMMonitor(roContext, () => {
+                oManager = (viMgrID == 0) ? PrGetMgr<tObject>(roContext) : (ICtObjectManager)(((ICtProviderContainer)roContext.Config.Session).get_Provider(1, viMgrID));
+                oRet = (ICtObject)oManager.GetObject(viID, viFlags, 0);
+            });
             if (vbRaiseErrorIfNotFound && oRet is null) throw new KeyNotFoundException($"No object of type { typeof(tObject).Name } found with ID '{viID}'");
             return oRet;
         }
 
-        private static ICtObject PrGet<tObject>(ConfigClass roConfig, string vsName, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true, int viMgrID = 0)
+        private static ICtObject PrGet<tObject>(Context roContext, string vsName, ACCESSFLAGS viFlags = ACCESSFLAGS.OM_READ, bool vbRaiseErrorIfNotFound = true, int viMgrID = 0)
             where tObject : ManagedObject, new()
         {
-            ICtObjectManager oManager = (viMgrID == 0) ? PrGetMgr<tObject>(roConfig) : (ICtObjectManager)(((ICtProviderContainer)roConfig.Session).get_Provider(1, viMgrID));
-            ICtOqlFactoryFacade oqlFactory = new CtOqlFactoryFacade();
-            ICtOqlBooleanExpr oOql = oqlFactory.Equal(oqlFactory.Prop((int)ct_object_property.CT_NAME_PROP), oqlFactory.Value(vsName));
-            ICtGenCollection oCollection = null;
-            try
-            {
-                oCollection = oManager.GetObjects(oOql, viFlags, 0, null);
-            }
-            catch (System.Runtime.InteropServices.COMException e) 
-            {
-                _oLog.Debug(e);
-            }
-            if (vbRaiseErrorIfNotFound && (oCollection is null)) throw new KeyNotFoundException($"No object of type { typeof(tObject).Name } found with name '{vsName}'");
-            ICtObject oRet = (oCollection is null) ? null : (ICtObject)oCollection.GetAt(1);
+            ICtObject oRet = null;
+            ICtObjectManager oManager = null;
+            COMMonitor(roContext, () => {
+                oManager = (viMgrID == 0) ? PrGetMgr<tObject>(roContext) : (ICtObjectManager)(((ICtProviderContainer)roContext.Config.Session).get_Provider(1, viMgrID));
+                ICtOqlFactoryFacade oqlFactory = new CtOqlFactoryFacadeClass();
+                ICtOqlBooleanExpr oOql = oqlFactory.Equal(oqlFactory.Prop((int)ct_object_property.CT_NAME_PROP), oqlFactory.Value(vsName));
+                ICtGenCollection oCollection = null;
+                try {
+                    oCollection = oManager.GetObjects(oOql, viFlags, 0, null);
+                } catch (System.Runtime.InteropServices.COMException e) {
+                    _oLog.Debug($"Object '{vsName}' not found: {e}");
+                }
+                if (vbRaiseErrorIfNotFound && (oCollection is null)) throw new KeyNotFoundException($"No object of type { typeof(tObject).Name } found with name '{vsName}'");
+                oRet = (oCollection is null) ? null : (ICtObject)oCollection.GetAt(1);
+            });
             if (vbRaiseErrorIfNotFound && oRet is null) throw new ArgumentNullException($"Object of type { typeof(tObject).Name } found with name '{vsName}' is null");
             return oRet;
         }
-        #endregion
 
+
+        private static ICtObject PrGet<tObject>(Context roContext, string vsID1, string vsID2, bool vbRaiseErrorIfNotFound = true)
+            where tObject : ManagedObject, new()
+        {
+            ICtObject oRet = null;
+            ICtObjectManager oManager = PrGetMgr<tObject>(roContext);
+            if (!_oType2Delegate.TryGetValue(typeof(tObject), out var oDelegate))
+            {
+                // Init is done by previous call to PrGetMgr
+                throw new ArgumentException($"FC type '{typeof(tObject).Name}' does not support identification with 2 names");
+            }
+            try
+            {
+                oRet = oDelegate(roContext, oManager, vsID1, vsID2);
+            }
+            catch (System.Runtime.InteropServices.COMException e)
+            {
+                oRet = null;
+                _oLog.Debug($"Object not found with criteria '{vsID1}' and '{vsID2}': {e}");
+            }
+            if (vbRaiseErrorIfNotFound && (oRet is null)) throw new KeyNotFoundException($"No object of type { typeof(tObject).Name } found with criteria '{vsID1}' and '{vsID2}'");
+            return oRet;
+        }
+
+        #endregion
 
         public static void Register<tObject>(int viFCManagerID) where tObject : ManagedObject, new()
         {
@@ -270,105 +351,138 @@ namespace CTSWeb.Util
         }
 
 
+        public static void RegisterDelegate<tObject>(Func<Context, ICtObjectManager, string, string, ICtObject> voDelegate) where tObject : ManagedObject, new()
+        {
+            Type oType = typeof(tObject);
+            _oType2Delegate.Add(oType, voDelegate);
+        }
+
+
         public static List<tObject> GetAll<tObject>(Context roContext) where tObject : ManagedObject, new()
         {
             List<tObject> oRet = new List<tObject>();
-            tObject oDumy;
 
-            ICtObjectManager oManager = PrGetMgr<tObject>(roContext.Config);
-            CTCLIENTSERVERLib.ICtGenCollection oCollection = oManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
-            // New tObject(oObj) generates a compiler error (new can be called only with 0 argument
-            foreach (ICtObject oObj in oCollection)
-            {
-                oDumy = new tObject();
-                oDumy.ReadFrom(oObj, roContext.Language);
-                oRet.Add(oDumy);
-            }
+            ICtObjectManager oManager = PrGetMgr<tObject>(roContext);
+            COMMonitor(roContext, () => {
+                CTCLIENTSERVERLib.ICtGenCollection oCollection = oManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
+                // New tObject(oObj) generates a compiler error (new can be called only with 0 argument
+                tObject o;
+                foreach (ICtObject oFCObj in oCollection)
+                {
+                    o = new tObject();
+                    o.ReadFrom(oFCObj, roContext.Language);
+                    oRet.Add(o);
+                }
+            });
             return oRet;
         }
 
 
-        public static tObject Get<tObject>(Context roContext, int viID, MessageList roMess) where tObject : ManagedObject, new()
+        public static tObject Get<tObject>(Context roContext, int viID) where tObject : ManagedObject, new()
         {
-            tObject oDumy = new tObject();
-            ICtObject oFCObj = PrGet<tObject>(roContext.Config, viID);
-            if (oFCObj == null)
-            {
-                oDumy = null;
-                roMess.Add("RF0110", typeof(tObject).Name, viID);
-            }
-            else
-            {
-                oDumy.ReadFrom(oFCObj, roContext.Language);
-            }
-            return oDumy;
+            ICtObject oFCObj = PrGet<tObject>(roContext, viID);
+            tObject oRet = new tObject();
+            oRet.ReadFrom(oFCObj, roContext.Language);
+            return oRet;
         }
 
 
-        public static tObject Get<tObject>(Context roContext, string vsName, MessageList roMess) where tObject : ManagedObject, new()
+        public static tObject Get<tObject>(Context roContext, string vsName) where tObject : ManagedObject, new()
         {
-            tObject oDumy = new tObject();
-            ICtObject oFCObj = PrGet<tObject>(roContext.Config, vsName);
-            if (oFCObj == null)
-            {
-                oDumy = null;
-                roMess.Add("RF0111", typeof(tObject).Name, vsName);
-            }
-            else
-            {
-                oDumy.ReadFrom(oFCObj, roContext.Language);
-            }
-            return oDumy;
+            ICtObject oFCObj = PrGet<tObject>(roContext, vsName);
+            tObject oRet = new tObject();
+            oRet.ReadFrom(oFCObj, roContext.Language);
+            return oRet;
         }
 
 
-        public static bool Exists<tObject>(ConfigClass roConfig, int viID) where tObject : ManagedObject, new()
-            => !(PrGet<tObject>(roConfig, viID,ACCESSFLAGS.OM_READ, false) is null);
-
-
-        public static bool Exists<tObject>(ConfigClass roConfig, string vsName) where tObject : ManagedObject, new()
-            => !(PrGet<tObject>(roConfig, vsName, ACCESSFLAGS.OM_READ, false) is null);
-
-
-        public static HashSet<string> GetRefValueCodes(ConfigClass roConfig, string vsTableCode)
+        public static tObject Get<tObject>(Context roContext, string vsID1, string vsID2) where tObject : ManagedObject, new()
         {
-            ICtProviderContainer oContainer = (ICtProviderContainer)roConfig.Session;
-            if (!_oCode2MgrID.TryGetValue(vsTableCode, out int iMgrID))
-            {
-                throw new ArgumentException($"Unrecognized FC table '{vsTableCode}'");
-            }
-            ICtObjectManager oManager = (ICtObjectManager)oContainer.get_Provider(1, iMgrID);
+            ICtObject oFCObj = PrGet<tObject>(roContext, vsID1, vsID2);
+            tObject oRet = new tObject();
+            oRet.ReadFrom(oFCObj, roContext.Language);
+            return oRet;
+        }
+
+
+        public static bool Exists<tObject>(Context roContext, int viID) where tObject : ManagedObject, new()
+            => !(PrGet<tObject>(roContext, viID,ACCESSFLAGS.OM_READ, false) is null);
+
+
+        public static bool Exists<tObject>(Context roContext, string vsName) where tObject : ManagedObject, new()
+            => !(PrGet<tObject>(roContext, vsName, ACCESSFLAGS.OM_READ, false) is null);
+
+
+        public static bool Exists<tObject>(Context roContext, string vsID1, string vsID2) where tObject : ManagedObject, new()
+            => !(PrGet<tObject>(roContext, vsID1, vsID2, false) is null);
+
+
+        public static HashSet<string> GetRefValueCodes(Context roContext, string vsTableCode)
+        {
             HashSet<string> oRet = new HashSet<string>();
-            foreach (ICtObject o in oManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+            if (!_oCode2DimAccess.TryGetValue(vsTableCode, out PrDimensionAccess oDimAccess))
             {
-                oRet.Add(o.Name);
+                throw new ArgumentException($"Unrecognized FC table '{vsTableCode}'");
+            } 
+            else
+            {
+                if (!oDimAccess.HasRefTable)
+                {
+                    throw new ArgumentException($"{vsTableCode} does not have a list of elements");
+                }
+                else
+                {
+                    ICtProviderContainer oContainer = (ICtProviderContainer)roContext.Config.Session;
+                    ICtObjectManager oManager = null;
+                    COMMonitor(roContext, () => {
+                        oManager = (ICtObjectManager)oContainer.get_Provider(1, oDimAccess.RefTableManagerID);
+                        foreach (ICtObject o in oManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+                        {
+                            oRet.Add(o.Name);
+                        }
+                    });
+                }
             }
             return oRet;
         }
 
 
-        
-        public static Models.RefValue GetRefValue(ConfigClass roConfig, string vsTableCode, string vsName, Language voLang)
+        public static Models.RefValue GetRefValue(Context roContext, string vsTableCode, string vsName)
         {
-            if (!_oCode2DimensionID.TryGetValue(vsTableCode, out int iDimID))
+            Models.RefValue oRet = null;
+            CTCORELib.ICtRefValue oRefVal = null;
+            if (!_oCode2DimAccess.TryGetValue(vsTableCode, out PrDimensionAccess oDimAccess))
             {
                 throw new ArgumentException($"Unrecognized FC table '{vsTableCode}'");
             }
-            CTCORELib.ICtDimensionManager oDimManager = (CTCORELib.ICtDimensionManager)(((ICtProviderContainer)roConfig.Session).get_Provider(1, (int)CTCORELib.ct_core_manager.CT_DIMENSION_MANAGER));
-            CTCORELib.ICtDimension oDim = oDimManager.get_Dimension(iDimID);
-            CTCORELib.ICtRefValue oRefVal = oDim.get_RefValueFromName(vsName, 0);
-
-            Models.RefValue oRet = null;
+            else
+            {
+                ICtProviderContainer oContainer = (ICtProviderContainer)roContext.Config.Session;
+                COMMonitor(roContext, () =>
+                {
+                    if (oDimAccess.HasRefTable)
+                    {
+                        CTCORELib.ICtRefValueManager oManager = (CTCORELib.ICtRefValueManager)oContainer.get_Provider(1, oDimAccess.RefTableManagerID);
+                        oRefVal = oManager.get_RefValueFromName(vsName, 0);
+                    }
+                    else
+                    {
+                        CTCORELib.ICtDimensionManager oDimManager = (CTCORELib.ICtDimensionManager)(oContainer.get_Provider(1, (int)CTCORELib.ct_core_manager.CT_DIMENSION_MANAGER));
+                        CTCORELib.ICtDimension oDim = oDimManager.get_Dimension(oDimAccess.DimensionId);
+                        oRefVal = oDim.get_RefValueFromName(vsName, 0);
+                    }
+                });
+            }
             if (!(oRefVal is null))
             {
                 oRet = new Models.RefValue();
-                oRet.ReadFrom(oRefVal, voLang);
+                oRet.ReadFrom(oRefVal, roContext.Language);
             }
             return oRet;
         }
 
-
-        public static void Save<tObject>(ConfigClass roConfig, tObject roObject, MessageList roMess) where tObject : ManagedObject, new()
+        // TODO
+        public static void Save<tObject>(Context roContext, tObject roObject, MessageList roMess) where tObject : ManagedObject, new()
         {
             if (roObject != null)
             {
@@ -382,26 +496,41 @@ namespace CTSWeb.Util
                     }
                     else
                     {
-                        if (Exists<tObject>(roConfig, roObject.Name))
-                        {
+                        if (Exists<tObject>(roContext, roObject.Name))
+                        { // TODO: Change to message
                             throw new ArgumentOutOfRangeException($"An object of name {roObject.Name} already exists in type {typeof(tObject)}");
                         }
                         else
                         {
-                            if (null == (oFCObj = (ICtObject)PrGetMgr<tObject>(roConfig)?.NewObject(1))) throw new Exception($"Can't get new {typeof(tObject)}");
+                            oFCObj = (ICtObject)PrGetMgr<tObject>(roContext)?.NewObject(1);
+                            if (oFCObj is null) throw new Exception($"Can't get new {typeof(tObject)}");
                         }
                     }
                 }
                 else                     // Saving existing object
                 {
-                    if (null == (oFCObj = PrGet<tObject>(roConfig, roObject.ID, ACCESSFLAGS.OM_WRITE))) throw new Exception($"Can't open {typeof(tObject)} for writing");
+                    oFCObj = PrGet<tObject>(roContext, roObject.ID, ACCESSFLAGS.OM_WRITE);
+                    if (oFCObj is null) throw new Exception($"Can't open {typeof(tObject)} for writing");
                 }
                 _oLog.Debug($"Writing object {roObject.Name}");
-                roObject.WriteInto(oFCObj, roMess);
-                // Bugs on Reporting
-                // oFCObj.IsObjectValid();
-                ((ICtObjectManager)oFCObj.Manager).SaveObject(oFCObj);
-                oFCObj.WriteUnlock();
+                roObject.WriteInto(oFCObj, roMess, roContext);
+        
+                try
+                {
+                    oFCObj.IsObjectValid();
+                    ((dynamic)(oFCObj.Manager)).SaveObject(oFCObj);
+                    //PrGetMgr<tObject>(roContext).SaveObject(oFCObj);
+                }
+                catch (Exception e)
+                {
+                    roMess.Add("RF0311", e.Message);
+                    _oLog.Debug(e);
+                }
+                try
+                {
+                    oFCObj.WriteUnlock();
+                }
+                catch (Exception e) { } // TODO
                 _oLog.Debug("Writen");
             }
         }
