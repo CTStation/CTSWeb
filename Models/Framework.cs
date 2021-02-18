@@ -23,11 +23,10 @@ namespace CTSWeb.Models
 
     public class Framework : ManagedObject // Inherits ID and Name and LDesc
     {
-        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
         static Framework()
         {
             Manager.Register<Framework>(-524238);
+            // Get framework from phase and version 
             Manager.RegisterDelegate<Framework>((Context roContext, ICtObjectManager voMgr, string vsID1, string vsID2) =>
                                                         (ICtObject)((ICtFrameworkManager)voMgr).FrameworkFromPhaseVersion[
                                                             roContext.GetRefValue("Phase", vsID1).FCRefValue(),
@@ -68,5 +67,137 @@ namespace CTSWeb.Models
             }
         }
     }
+
+    //public class Framework
+    //{
+    //   // public List<ControlLevel> ControlLevels { get; }
+
+    //    public Framework(IRefObjRef roFramework)
+    //    {
+    //        // ControlLevels = new List<ControlLevel>();
+
+    //        //foreach (IRefCtrlFamily obj in framework.CtrlFamilyList)
+    //        //{
+    //        //        Console.WriteLine(obj.Name);
+    //        //}
+
+    //        //foreach (IRefControl obj in framework.ControlList)
+    //        //{
+    //        //    Controls.Add(new Control(obj));
+    //        //}
+
+    //        //foreach (IRefControlSet obj in framework.CtrlSetList)
+    //        //{
+    //        //    ControlSets.Add(new ControlsSets(obj));
+    //        //}
+    //    }
+
+    //    public bool TryGet(string rsPhaseName, string rsVersionName, Context roFCSession, out IRefObjRef roRef)
+    //    {
+    //        bool bFound = false;
+
+    //        ICtProviderContainer oProviderContainer = (ICtProviderContainer)roFCSession.Config; ;
+    //        ICtObjectManager oManager = (ICtObjectManager)oProviderContainer.get_Provider(1, (int)ct_core_manager.CT_REFTABLE_MANAGER);
+    //        ICtGenCollection oColl = oManager. GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null);
+
+    //        roRef = default;
+    //        foreach (IRefObjRef oFrame in oColl)
+    //        {
+    //            if (oFrame.Phase.Name == rsPhaseName && oFrame.Version.Name == rsVersionName)
+    //            {
+    //                bFound = true;
+    //                roRef = oFrame;
+    //                break;
+    //            }
+    //        }
+    //        return bFound;
+    //    }
+    //}
+
+
+    public class ControlsSets
+    {
+        public int ID;
+        public string Name;
+        public List<FCControl> Controls;
+        //List<ControlsSets> ControlSets;
+        public List<ControlSubSets> ControlSubSets;
+
+
+        public ControlsSets(IRefControlSet obj)
+        {
+            ID = obj.ID;
+            Name = obj.Name;
+            Controls = new List<FCControl>();
+            ControlSubSets = new List<ControlSubSets>();
+            foreach (IRefCtrlFamily refObjRef in obj.Content)
+            {
+
+                switch (refObjRef.Type)
+                {
+                    case -524234: // controlset
+                        //ControlSets.Add(new ControlsSets((IRefControlSet)refObjRef));
+
+                        break;
+
+                    case -524221: // subset
+                        ControlSubSets.Add(new ControlSubSets((IRefCtrlFamily)refObjRef));
+                        break;
+                    default:
+                        Controls.Add(new FCControl((IRefControl)refObjRef));
+                        break;
+
+                }
+
+            }
+
+
+        }
+    }
+
+    public class ControlSubSets
+    {
+        public int ID;
+        public string Name;
+        public List<FCControl> ManualControls = new List<FCControl>();
+        public List<FCControl> AutomaticControls = new List<FCControl>();
+
+        public ControlSubSets(IRefCtrlFamily controlFamily)
+        {
+            ID = controlFamily.ID;
+            Name = controlFamily.Name;
+            ManualControls = new List<FCControl>();
+            AutomaticControls = new List<FCControl>();
+            foreach (IRefControlBase control in controlFamily.Content)
+            {
+                switch (control.Type)
+                {
+                    case -524233:
+                        ManualControls.Add(new FCControl(control));
+                        break;
+
+                    case -524232:
+                        AutomaticControls.Add(new FCControl(control));
+                        break;
+                }
+                // Controls.Add(new Control(control));
+            }
+        }
+    }
+
+    public class FCControl
+    {
+        public int ID;
+        public string Name;
+        public string Expression;
+        public FCControl(IRefControlBase control)
+        {
+            ID = control.ID;
+            Name = control.Name;
+            Expression = control.Expr;
+        }
+    }
+
+
 }
 

@@ -162,17 +162,22 @@ namespace CTSWeb.Util
 
         #region  Manager functions
 
-        public List<tObject> GetAll<tObject>()                          where tObject : ManagedObject, new() => Manager.GetAll<tObject>(this); 
+        public List<tObject> GetAll<tObject>()                                      where tObject : ManagedObject, new() => Manager.GetAll<tObject>(this); 
 
-        public tObject Get<tObject>(int viID)                           where tObject : ManagedObject, new() => Manager.Get<tObject>(this, viID);
-        public tObject Get<tObject>(string vsName)                      where tObject : ManagedObject, new() => Manager.Get<tObject>(this, vsName);
-        public tObject Get<tObject>(string vsID1, string vsID2)         where tObject : ManagedObject, new() => Manager.Get<tObject>(this, vsID1, vsID2);
+        public tObject Get<tObject>(int viID)                                       where tObject : ManagedObject, new() => Manager.Get<tObject>(this, viID);
+        public tObject Get<tObject>(string vsName)                                  where tObject : ManagedObject, new() => Manager.Get<tObject>(this, vsName);
+        public tObject Get<tObject>(string vsID1, string vsID2)                     where tObject : ManagedObject, new() => Manager.Get<tObject>(this, vsID1, vsID2);
 
-        public bool Exists<tObject>(int viID)                           where tObject : ManagedObject, new() => Manager.Exists<tObject>(this, viID);
-        public bool Exists<tObject>(string vsName)                      where tObject : ManagedObject, new() => Manager.Exists<tObject>(this, vsName);
-        public bool Exists<tObject>(string vsID1, string vsID2)         where tObject : ManagedObject, new() => Manager.Exists<tObject>(this, vsID1, vsID2);
+        public bool Exists<tObject>(int viID)                                       where tObject : ManagedObject, new() => Manager.Exists<tObject>(this, viID);
+        public bool Exists<tObject>(string vsName)                                  where tObject : ManagedObject, new() => Manager.Exists<tObject>(this, vsName);
+        public bool Exists<tObject>(string vsID1, string vsID2)                     where tObject : ManagedObject, new() => Manager.Exists<tObject>(this, vsID1, vsID2);
 
-        public void Save<tObject>(tObject voObj, MessageList roMess)    where tObject : ManagedObject, new() => Manager.Save<tObject>(this, voObj, roMess);
+        public bool TryGet<tObject>(int viID, out tObject ro)                       where tObject : ManagedObject, new() => Manager.TryGet<tObject>(this, viID, out ro);
+        public bool TryGet<tObject>(string vsName, out tObject ro)                  where tObject : ManagedObject, new() => Manager.TryGet<tObject>(this, vsName, out ro);
+        public bool TryGet<tObject>(string vsID1, string vsID2, out tObject ro)     where tObject : ManagedObject, new() => Manager.TryGet<tObject>(this, vsID1, vsID2, out ro);
+
+        public void Save<tObject>(tObject voObj, MessageList roMess)                where tObject : ManagedObject, new() => Manager.Save<tObject>(this, voObj, roMess);
+
 
         // Cache for RetTable values
         private readonly Dictionary<string, HashSet<string>> _oRefValues = new Dictionary<string, HashSet<string>>();

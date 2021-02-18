@@ -22,8 +22,6 @@ namespace CTSWeb.Models
 {
     public class ReportingLight : ManagedObjectWithDescAndSecurity // Inherits ID and Name
     {
-        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
         // TODO use attribute rather than a full field
         public static bool _bDontSaveName = true;
 
@@ -72,10 +70,33 @@ namespace CTSWeb.Models
             // _oLog.Debug($"Writen  {this.GetType().Name} {Name}");
         }
 
-        public bool Equals(ReportingLight voRep)
+        public override bool IsValid(Context roContext, MessageList roMess)
         {
-            return ID == voRep?.ID;
+            return base.IsValid(roContext, roMess);
         }
+
+
+        public override bool Exists(Context roContext)
+        {
+            bool bRet;
+            if (ID != 0)
+            {
+                bRet = Manager.TryGetFCObject(roContext, ID, GetType(), out _);
+            }
+            else
+            {
+                if (String.IsNullOrEmpty(Phase) || string.IsNullOrEmpty(UpdatePeriod))
+                {
+                    bRet = false;
+                }
+                else
+                {
+                    bRet = Manager.TryGetFCObject(roContext, Phase, UpdatePeriod, GetType(), out _);
+                }
+            }
+            return bRet;
+        }
+
     }
 
 
@@ -86,6 +107,7 @@ namespace CTSWeb.Models
         static Reporting() 
         {
             Manager.Register<Reporting>((int)CtReportingManagers.CT_REPORTING_MANAGER, (int)(LanguageMasks.ShortDesc | LanguageMasks.LongDesc | LanguageMasks.Comment)); // TranslatableField.None
+            // Get reporting from phase and updper
             Manager.RegisterDelegate<Reporting>((Context roContext, ICtObjectManager voMgr, string vsID1, string vsID2) =>
                                                         (ICtObject)((ICtReportingManager)voMgr).Reporting[
                                                             roContext.GetRefValue("Phase", vsID1).FCRefValue(),
@@ -96,7 +118,6 @@ namespace CTSWeb.Models
         // Argument-less constructor
         public Reporting() { }
 
-
         public int Status;
         public Framework Framework;
         //public ExchangeRate ExchangeRate;
@@ -106,24 +127,26 @@ namespace CTSWeb.Models
         //public List<Period> Periods;
         //public uint ReportingModifyComment;
         //public DateTime ReportingHierarchyDate;
-        public List<RelatedEntityReportingCollection> RelatedEntityReportingCollection;
+        public List<EntityReporting> RelatedEntityReportingCollection;
 
 
         public override void ReadFrom(ICtObject roObject, Language roLang)
         {
             base.ReadFrom(roObject, roLang);
+
             if(!(roObject is null))
             {
+                ICtReporting oFC = (ICtReporting)roObject;
 
-                ICtReporting reporting = (ICtReporting)roObject;
-
-                Status = (int)reporting.Status;
+                Status = (int)oFC.Status;
                 Framework = new Framework();
-                Framework.ReadFrom((ICtObject)reporting.Framework, roLang);
+                Framework.ReadFrom((ICtObject)oFC.Framework, roLang);
+                
+                
                 //ExchangeRate = new ExchangeRate(reporting.ExchangeRate);
                 //ExchangeRateUpdatePeriod = new ExchangeRateUpdatePeriod(reporting.ExchangeRateUpdatePeriod);
                 //ExchangeRateVersion = new ExchangeRateVersion(reporting.ExchangeRateVersion);
-                RelatedEntityReportingCollection = new List<RelatedEntityReportingCollection>();
+                RelatedEntityReportingCollection = new List<EntityReporting>();
 
                 //if (reporting.ExchangeRateType != null)
                 //{
@@ -139,9 +162,12 @@ namespace CTSWeb.Models
                 //    ExchangeRateType = new ExchangeRateType();
                 //}
 
-                foreach (ICtEntityReporting reporting1 in reporting.RelatedEntityReportingCollection)
+                EntityReporting o;
+                foreach (ICtEntityReporting oFCDetail in oFC.RelatedEntityReportingCollection)
                 {
-                    RelatedEntityReportingCollection.Add(new RelatedEntityReportingCollection(reporting1));
+                    o = new EntityReporting();
+                    o.ReadFrom(oFCDetail, roLang);
+                    RelatedEntityReportingCollection.Add(o);
                 }
 
                 //Periods = new List<Period>();
@@ -151,6 +177,7 @@ namespace CTSWeb.Models
                 //}
                 //ReportingModifyComment = reporting.ReportingModifyComment;
                 //ReportingHierarchyDate = reporting.ReportingHierarchyDate;
+
                 _oLog.Debug($"Read {Phase} - {UpdatePeriod}");
             }
         }
@@ -180,6 +207,15 @@ namespace CTSWeb.Models
         }
 
 
+
+        public override bool IsValid(Context roContext, MessageList roMess)
+        {
+            return base.IsValid(roContext, roMess);
+        }
+
+
+
+
         public static List<Reporting> LoadFromDataSet(DataSet voData, Context roContext, MessageList roMessages)
         {
             List<Reporting> oRet = new List<Reporting>();
@@ -199,30 +235,24 @@ namespace CTSWeb.Models
                 {
                     if (!oInvalidRows.Contains(c))
                     { 
-                        if (roContext.Exists<Reporting>((string)o["Phase"], (string)o["UpdatePeriod"]))
+                        if (!roContext.TryGet<Reporting>((string)o["Phase"], (string)o["UpdatePeriod"], out oFullRep))
                         {
                             // New reporting to create
                             oFullRep = new Reporting();
                             oFullRep.ReadFrom(null, roContext.Language);    // sets up the object, equivalent to constructor TODO: maybe a Construct method?
-                        }
-                        else
-                        {
-                            // Update existing reporting
-                            oFullRep = roContext.Get<Reporting>((string)o["Phase"], (string)o["UpdatePeriod"]);
-                        }
+                        } // Else Update existing reporting
 
                         oFullRep.Phase = (string)o["Phase"];
                         oFullRep.UpdatePeriod = (string)o["UpdatePeriod"];
                         oFullRep.Name = oFullRep.Phase + " - " + oFullRep.UpdatePeriod;
                         oFullRep.FrameworkVersion = (string)o["FrameworkVersion"];
                         // Check framework is published
-                        if (roContext.Exists<Framework>(oFullRep.Phase, oFullRep.FrameworkVersion))
+                        if (!roContext.TryGet<Framework>(oFullRep.Phase, oFullRep.FrameworkVersion, out oFullRep.Framework))
                         {
                             roMessages.Add("RF0010", oFullRep.Phase, oFullRep.FrameworkVersion);
                         }
                         else
                         {
-                            oFullRep.Framework = roContext.Get<Framework>(oFullRep.Phase, oFullRep.FrameworkVersion);
                             if (oFullRep.Framework.Status != CTKREFLib.kref_framework_status.FRMK_STATUS_PUBLISHED)
                             {
                                 roMessages.Add("RF0010", oFullRep.Phase, oFullRep.FrameworkVersion);
@@ -232,6 +262,10 @@ namespace CTSWeb.Models
                                 oFullRep.ReportingStartDate = (DateTime)o["ReportingStartDate"];
                                 oFullRep.ReportingEndDate = (DateTime)o["ReportingEndDate"];
                                 // Desc is set automatically from Phase in all languages
+                                // Should not save each time. Maybe get the rporting from the list
+                                // TODO: see why doesn t work
+                                // Add debug when save
+                                // Save only once and not per line
                                 roContext.Save<Reporting>(oFullRep, roMessages);
                                 oRet.Add(oFullRep);
                             }
@@ -242,28 +276,84 @@ namespace CTSWeb.Models
             }
             return oRet;
         }
-
-        // Manage complex identifier: users choose framework from Phase and version, not from name
-        // Avoid burdening Manager with a complex identifier concept, deal with the lists here
-        // List of frameworks is usualy short
-        // TODO Move this to Manage with a delegate that builds the identifier as string[], then buld the delegate from attributes
-        public static List<(string, string)> BuildPickupList(List<ReportingLight> voList)
-        {
-            List<(string, string)> oRet = new List<(string, string)>();
-            foreach (ReportingLight o in voList) oRet.Add((o.Phase, o.UpdatePeriod));
-            return oRet;
-        }
-
-
-        public static ReportingLight GetFromUserID(List<ReportingLight> voList, string[] vasUserID) 
-        {
-            ReportingLight oRet = null;
-            foreach (ReportingLight o in voList) if (o.Phase == vasUserID[0] && o.UpdatePeriod == vasUserID[1]) { oRet = o; break; }
-            return oRet;
-        }
-
     }
+
+
+
+    public class EntityReporting : ManagedObject
+    {
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        public static bool _bDontSaveName = true;
+
+        static EntityReporting()
+        {
+            // No manager, read from reporting
+            //Manager.Register<ReportingLight>((int)CtReportingManagers.CT_REPORTING_MANAGER, (int)LanguageMasks.LongDesc); // TranslatableField.None
+        }
+
+        // Argument-less constructor
+        public EntityReporting() { }
+
+        public string Entity;
+        public string InputCurrency;
+        public bool IsInputSiteLocal;
+        public BaseOperation DefaultOperation;
+
+        public override void ReadFrom(ICtObject roObject, Language roLang)
+        {
+            base.ReadFrom(roObject, roLang);
+
+
+            if (!(roObject is null))
+            {
+                ICtEntityReporting oFC = (ICtEntityReporting)roObject;
+
+                Entity = oFC.Entity.Name;
+                InputCurrency = oFC.InputCurrency.Name;
+                IsInputSiteLocal = oFC.IsInputSiteLocal;     //TODO InputRecipient; TransferRecipient PublishingRecipient
+                DefaultOperation = new BaseOperation() {
+                    PackPublishingCutOffDate = oFC.DefaultPackOperation.PackPublishingCutOffDate,
+                    AllowEarlyPublishing = oFC.DefaultPackOperation.AllowEarlyPublishing,
+                    IntegrateAfterPublication = oFC.DefaultPackOperation.IntegrateAfterPublication,
+                    IntegrateAfterTransfer = oFC.DefaultPackOperation.IntegrateAfterTranfer
+                };
+            }
+        }
+
+        // TODO
+        public override void WriteInto(ICtObject roObject, MessageList roMess, Context roContext)
+        {
+            base.WriteInto(roObject, roMess, roContext);
+
+            // Not used
+            // _oLog.Debug($"Writen  {this.GetType().Name} {Name}");
+        }
+
+        //TODO
+        public override bool IsValid(Context roContext, MessageList roMess)
+        {
+            return base.IsValid(roContext, roMess);
+        }
+
+
+
+        public class BaseOperation
+        {
+            public DateTime PackPublishingCutOffDate;
+            public bool AllowEarlyPublishing;
+            public int IntegrateAfterPublication;
+            public int IntegrateAfterTransfer;
+            // TODO      //ControlLevelReachedAfterTransfer ControlLevelReachedAfterPublication 
+        }
+
+        // TODO
+        public class ControlLevelReachedAfterPublication
+        {
+            public int ID;
+            public string Name;
+            public int Rank;
+        }
+    } 
 }
-
-
 

@@ -53,12 +53,6 @@ namespace CTSWeb.Util
            ("RF0011",MessageSeverity.Error, ( ("en-US", "No published framework found for category {0}, , version {1}", "Choose another category or publish the category builder"),
                                               ("fr-FR", "Auncun référentiel publié pour la phase {0}, version {1}", "Choisissez une autre phase ou publiez le référentiel") )
             ),
-           ("RF0110",MessageSeverity.Error, ( ("en-US", "Object of type {0} with ID {1} not found", ""),
-                                              ("fr-FR", "Object de type {0} avec ID {1} non trouvé", "") )
-            ),
-           ("RF0111",MessageSeverity.Error, ( ("en-US", "Object of type {0} with name {1} not found", ""),
-                                              ("fr-FR", "Object de type {0} de code {1} non trouvé", "") )
-            ),
            ("RF0210",MessageSeverity.Error, ( ("en-US", "Table '{0}' not found in data set '{1}'", "Could be a transient network error. Signal the issue if it happens again"),
                                               ("fr-FR", "Table '{0}' non trouvée dans le jeu de données '{1}'", "Peut-être dû à un problème réseau transitoire. Signaler le problème s'il persiste") )
             ),
@@ -71,9 +65,34 @@ namespace CTSWeb.Util
            ("RF0310",MessageSeverity.Info, ( ("en-US", "Changed {0} from '{1}' to '{2}'", ""),
                                               ("fr-FR", "Change {0} de '{1}' à '{2}'", "") )
             ),
-           ("RF0311",MessageSeverity.Info, ( ("en-US", "Error {0} while saving", ""),
-                                              ("fr-FR", "Erreur {0} lors de la sauvegarde", "") )
+           ("RF0311",MessageSeverity.Info, ( ("en-US", "Object of type {0} named {1} is not judged valid by FC", "Please check its parameters"),
+                                              ("fr-FR", "L'objet de type {0} et de code {1} n'est pas considéré comme valide pas FC", "Vérifiez les paramètres") )
             ),
+           ("RF0312",MessageSeverity.Info, ( ("en-US", "Error {0} while saving object {1} of type {2}", ""),
+                                              ("fr-FR", "Erreur {0} lors de la sauvegarde de l'objet {1} de type {2}", "") )
+            ),
+           ("RF0313",MessageSeverity.Info, ( ("en-US", "Error {0} while releasing object {1} of type {2}", ""),
+                                              ("fr-FR", "Erreur {0} lors du déverrouillage de l'objet {1} de type {2}", "") )
+            ),
+           ("RF0410",MessageSeverity.Error, ( ("en-US", "A new object of type {0} must have a name", "Make sure a name is provided"),
+                                              ("fr-FR", "Un nouvel object de type {0} doit avoir un code", "Fournissez un code pour l'objet") )
+            ),
+           ("RF0411",MessageSeverity.Error, ( ("en-US", "An object of name '{0}' already exists in type {1}", "Choose another name that isn't used by another existing obejct"),
+                                              ("fr-FR", "Un object de code '{0}' et de type {1] existe déjà", "Choisissez un autre nom, qui ne soit pas utilisé par un objet existant") )
+            ),
+           ("RF0412",MessageSeverity.Error, ( ("en-US", "Character '{0}' is not allowed in the name '{1}'", "Change the name to use only letters, digits and -"),
+                                              ("fr-FR", "Le caracter '{0}' n'est pas accepté dans le code '{1}'", "Changez le code en utilisant uniquement des lettres, des chiffres ou le -") )
+            ),
+           ("RF0413",MessageSeverity.Error, ( ("en-US", "Name can't be empty", "Change the code"),
+                                              ("fr-FR", "Un code ne doit pas être vide", "Changez le code") )
+            ),
+           ("RF0414",MessageSeverity.Error, ( ("en-US", "The code '{0}' is too long", "Limit the code to 12 characters"),
+                                              ("fr-FR", "Le code '{0}' est trop long", "Limitez le code à 12 caractères") )
+            ),
+           ("RF0415",MessageSeverity.Error, ( ("en-US", "No object of type {0} has ID {1}", "The object may have been deleted. Please try again"),
+                                              ("fr-FR", "Aucun objet de type {0} n'a l'ID {1}", "Cet objet a peut-être été supprimé. Recommancez l'opération") )
+            ),
+           
         };
     }
 
@@ -92,8 +111,6 @@ namespace CTSWeb.Util
     // Keeps a list of used setup items and there hints, so that only one copy of used hints is transfered to the client
     public class MessageList
     {
-        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
         private readonly CultureInfo _oCulture;
         private readonly Dictionary<string, (MessageSeverity, string, string)> _oSetup;
 
