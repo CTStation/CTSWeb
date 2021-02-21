@@ -100,6 +100,7 @@ namespace CTSWeb.Models
     }
 
 
+   
     public class Reporting : ReportingLight
     {
         private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
@@ -127,6 +128,10 @@ namespace CTSWeb.Models
         //public List<Period> Periods;
         //public uint ReportingModifyComment;
         //public DateTime ReportingHierarchyDate;
+
+        public Package DefaultPackage;
+        public Restriction DefaultRestriction;
+        public Operation DefaultOperation;
         public List<EntityReporting> RelatedEntityReportingCollection;
 
 
@@ -141,11 +146,27 @@ namespace CTSWeb.Models
                 Status = (int)oFC.Status;
                 Framework = new Framework();
                 Framework.ReadFrom((ICtObject)oFC.Framework, roLang);
-                
-                
+
+
                 //ExchangeRate = new ExchangeRate(reporting.ExchangeRate);
                 //ExchangeRateUpdatePeriod = new ExchangeRateUpdatePeriod(reporting.ExchangeRateUpdatePeriod);
                 //ExchangeRateVersion = new ExchangeRateVersion(reporting.ExchangeRateVersion);
+
+                //DefaultPackage = new Package() {
+
+                //};
+
+
+                DefaultOperation = new Operation()
+                {
+                    PackPublishingCutOffDate = oFC.PropVal[(int)CtReportingProperties.CT_PROP_PACK_PUBLISHING_CUTOFF_DATE],
+                    AllowEarlyPublishing = (0 != oFC.PropVal[(int)CtReportingProperties.CT_PROP_ALLOW_EARLY_PUBLISHING]),
+                    IntegrateAfterPublication = oFC.PropVal[(int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_PUB],
+                    ControlLevelReachedAfterPublication = Framework.GetControlLevel(oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_PUB]?.Rank),
+                    IntegrateAfterTransfer = oFC.PropVal[(int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_TRANSFER],
+                    ControlLevelReachedAfterTransfer = Framework.GetControlLevel(oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_TRANSFER]?.Rank)
+                };
+
                 RelatedEntityReportingCollection = new List<EntityReporting>();
 
                 //if (reporting.ExchangeRateType != null)
@@ -264,7 +285,6 @@ namespace CTSWeb.Models
                                 // Desc is set automatically from Phase in all languages
                                 // Should not save each time. Maybe get the rporting from the list
                                 // TODO: see why doesn t work
-                                // Add debug when save
                                 // Save only once and not per line
                                 roContext.Save<Reporting>(oFullRep, roMessages);
                                 oRet.Add(oFullRep);
@@ -298,7 +318,8 @@ namespace CTSWeb.Models
         public string Entity;
         public string InputCurrency;
         public bool IsInputSiteLocal;
-        public BaseOperation DefaultOperation;
+
+        public Operation PackOperation;
 
         public override void ReadFrom(ICtObject roObject, Language roLang)
         {
@@ -312,7 +333,7 @@ namespace CTSWeb.Models
                 Entity = oFC.Entity.Name;
                 InputCurrency = oFC.InputCurrency.Name;
                 IsInputSiteLocal = oFC.IsInputSiteLocal;     //TODO InputRecipient; TransferRecipient PublishingRecipient
-                DefaultOperation = new BaseOperation() {
+                PackOperation = new Operation() {
                     PackPublishingCutOffDate = oFC.DefaultPackOperation.PackPublishingCutOffDate,
                     AllowEarlyPublishing = oFC.DefaultPackOperation.AllowEarlyPublishing,
                     IntegrateAfterPublication = oFC.DefaultPackOperation.IntegrateAfterPublication,
@@ -335,25 +356,42 @@ namespace CTSWeb.Models
         {
             return base.IsValid(roContext, roMess);
         }
+    }
 
 
 
-        public class BaseOperation
-        {
-            public DateTime PackPublishingCutOffDate;
-            public bool AllowEarlyPublishing;
-            public int IntegrateAfterPublication;
-            public int IntegrateAfterTransfer;
-            // TODO      //ControlLevelReachedAfterTransfer ControlLevelReachedAfterPublication 
-        }
+    public class Package
+    {
+    }
 
-        // TODO
-        public class ControlLevelReachedAfterPublication
-        {
-            public int ID;
-            public string Name;
-            public int Rank;
-        }
-    } 
+
+
+    public class Restriction
+    {
+    }
+
+
+
+    public class Operation
+    {
+        public DateTime PackPublishingCutOffDate;
+        public bool AllowEarlyPublishing;
+        public int IntegrateAfterPublication;
+        public ControlLevel ControlLevelReachedAfterPublication;
+        public int IntegrateAfterTransfer;
+        public ControlLevel ControlLevelReachedAfterTransfer;
+
+        public const int StandardMask = 0x10000;
+        public const int SpecialMask = 0x20000;
+        public const int AdvancedMask = 0x40000;
+
+        public bool IsStandard(int viFlags) => (viFlags & StandardMask) != 0;
+        public int SetStandard(int viFlags, bool vbMode) => vbMode ? viFlags | StandardMask : viFlags & ~StandardMask;
+        public bool IsSpecial(int viFlags) => (viFlags & SpecialMask) != 0;
+        public int SetSpecial(int viFlags, bool vbMode) => vbMode ? viFlags | SpecialMask : viFlags & ~SpecialMask;
+        public bool IsAdvanced(int viFlags) => (viFlags & AdvancedMask) != 0;
+        public int SetAdvanced(int viFlags, bool vbMode) => vbMode ? viFlags | AdvancedMask : viFlags & ~AdvancedMask;
+    }
+
 }
 

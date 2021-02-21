@@ -40,31 +40,36 @@ namespace CTSWeb.Models
         public string Phase;
         public string Version;
         public kref_framework_status Status;
-        public List<ManagedObjectWithDesc> ControlLevels = new List<ManagedObjectWithDesc>();
+        public SortedList<short, ControlLevel> ControlLevels = new SortedList<short, ControlLevel>();
 
-        private IRefObjRef _oFCFramework;
+        private IRefObjRef _oFC;
 
-        public IRefObjRef FCValue() => _oFCFramework;
+        public IRefObjRef FCValue() => _oFC;
 
 
         public override void ReadFrom(ICtObject roObject, Language roLang)
         {
             base.ReadFrom(roObject, roLang);
 
-            IRefObjRef oRef = (IRefObjRef)roObject;
-            _oFCFramework = oRef;
             if (!(roObject is null))
             {
+                IRefObjRef oRef = (IRefObjRef)roObject;
+                _oFC = oRef;
                 Phase = oRef.Phase?.Name;
                 Version = oRef.Version?.Name;
                 Status = oRef.RefStatus;
                 foreach (ICtObject oLevel in oRef.ContLevelList)
                 {
-                    ManagedObjectWithDesc o = new ManagedObjectWithDesc();
+                    ControlLevel o = new ControlLevel();
                     o.ReadFrom(oLevel, roLang);
-                    ControlLevels.Add(o);
+                    ControlLevels.Add(o.Rank, o);
                 }
             }
+        }
+
+        public ControlLevel GetControlLevel(short? viRank)
+        {
+            return viRank is null ? null : ControlLevels[(short)viRank];
         }
     }
 
@@ -190,14 +195,49 @@ namespace CTSWeb.Models
         public int ID;
         public string Name;
         public string Expression;
+        public ControlLevel Level;
+
         public FCControl(IRefControlBase control)
         {
             ID = control.ID;
             Name = control.Name;
             Expression = control.Expr;
+            // Level = control.Level;
         }
     }
 
 
+    public class ControlLevel : ManagedObjectWithDesc
+    {
+        static ControlLevel()
+        {
+            // No manager, searched in Framework
+            // Manager.Register<ControlLevel>();
+            // Get framework from phase and version 
+        }
+
+        // Argument-less constructor
+        public ControlLevel() { }
+
+        private IRefLevel _oFC;
+        private short _iRank;
+
+        public short Rank { get => _iRank; }
+
+        public IRefLevel FCValue() => _oFC;
+
+
+        public override void ReadFrom(ICtObject roObject, Language roLang)
+        {
+            base.ReadFrom(roObject, roLang);
+
+            if (!(roObject is null))
+            {
+                IRefLevel oRef = (IRefLevel)roObject;
+                _oFC = oRef;
+                _iRank = oRef.Rank;
+            }
+        }
+    }
 }
 

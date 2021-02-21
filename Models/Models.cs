@@ -47,24 +47,6 @@ namespace CTSWeb.Models
     }
 
 
-    public class BaseOperation
-    {
-        public DateTime PackPublishingCutOffDate;
-        public bool AllowEarlyPublishing;
-        public int IntegrateAfterPublication;
-        public int IntegrateAfterTransfer;
-
-    }
-
-
-    public class ControlLevelReachedAfterPublication
-    {
-        public int ID;
-        public string Name;
-        public int Rank;
-    }
-
-
     public class ReportingModifyComment
     {
 

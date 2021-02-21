@@ -71,9 +71,6 @@ namespace CTSWeb.Util
            ("RF0312",MessageSeverity.Info, ( ("en-US", "Error {0} while saving object {1} of type {2}", ""),
                                               ("fr-FR", "Erreur {0} lors de la sauvegarde de l'objet {1} de type {2}", "") )
             ),
-           ("RF0313",MessageSeverity.Info, ( ("en-US", "Error {0} while releasing object {1} of type {2}", ""),
-                                              ("fr-FR", "Erreur {0} lors du déverrouillage de l'objet {1} de type {2}", "") )
-            ),
            ("RF0410",MessageSeverity.Error, ( ("en-US", "A new object of type {0} must have a name", "Make sure a name is provided"),
                                               ("fr-FR", "Un nouvel object de type {0} doit avoir un code", "Fournissez un code pour l'objet") )
             ),
@@ -92,7 +89,16 @@ namespace CTSWeb.Util
            ("RF0415",MessageSeverity.Error, ( ("en-US", "No object of type {0} has ID {1}", "The object may have been deleted. Please try again"),
                                               ("fr-FR", "Aucun objet de type {0} n'a l'ID {1}", "Cet objet a peut-être été supprimé. Recommancez l'opération") )
             ),
-           
+           ("RF0450",MessageSeverity.Error, ( ("en-US", "Can't get a new object of type {0}", "The server may be saturated. Please disconnect, reconnect, and try again"),
+                                              ("fr-FR", "Impossible d'obtenir un nouvel objet de type {0}", "Le serveur peut être saturé. Quittez l'application et essayez une autre fois") )
+            ),
+           ("RF0451",MessageSeverity.Error, ( ("en-US", "Can't open object '{0}' of type {1} for writing", "Object may be edited by another FC session"),
+                                              ("fr-FR", "Impossible d'ouvrir l'objet '{0}' de type {1} en écriture", "L'objet est peut-être en cours d'édition dans une autre session FC") )
+            ),
+           ("RF0452",MessageSeverity.Error, ( ("en-US", "Errors occured during this session. No modifications will be attempted", "Please reconnect and try again"),
+                                              ("fr-FR", "Des erreurs ont eu lieu dans cette session. Les modification sont suspendues", "Reconnectez-vous et essayez une autre fois") )
+            ),
+
         };
     }
 

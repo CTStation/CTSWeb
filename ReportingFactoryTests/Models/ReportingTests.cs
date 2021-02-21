@@ -22,6 +22,7 @@ using System.Web;
 using System.Web.SessionState;
 using System.IO;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -64,7 +65,7 @@ namespace CTSWeb.Models.Tests
         //    return httpRequest.RequestContext.HttpContext.Request;
         //}
 
-        private NameValueCollection PrContext(List<(string, string)> voHeaders)
+        private static NameValueCollection PrContext(List<(string, string)> voHeaders)
         {
             var oRet = new NameValueCollection(voHeaders.Count);
             foreach (var o in voHeaders)
@@ -74,11 +75,7 @@ namespace CTSWeb.Models.Tests
             return oRet;
         }
 
-
-        [TestMethod()]
-        public void CreateReportingTest()
-        {
-            List<(string, string)> oParams = new List<(string, string)>()
+        private static List<(string, string)> _oParams = new List<(string, string)>()
             {
                 ("P001.ctstation.fr", "172.31.38.85"),
                 ("P002.ctstation.fr", "SAPFCSQLSERVER"),
@@ -89,9 +86,14 @@ namespace CTSWeb.Models.Tests
                 ("P008.ctstation.fr", "en-US, fr-FR, de-DE"),
             };
 
-            var oHeaders = PrContext(oParams);
+        private static NameValueCollection _oHeaders = PrContext(_oParams);
 
-            using (Context oContext = new Context(oHeaders))
+
+
+        [TestMethod()]
+        public void CreateReportingTest()
+        {
+            using (Context oContext = new Context(_oHeaders))
             {
                 MessageList oMessages = oContext.NewMessageList();
 
@@ -207,5 +209,39 @@ namespace CTSWeb.Models.Tests
 
             oRepManager.SaveObject(oReporting);
         }
+
+
+        [TestMethod()]
+        public void ReadReportingTest()
+        {
+            using (Context oContext = new Context(_oHeaders))
+            {
+                Reporting oRep = oContext.Get<Reporting>("A", "2003.12");
+                Assert.IsNotNull(oRep);
+            }
+        }
+
+
+        [TestMethod()]
+        public void ListProperties()
+        {
+            using (Context oContext = new Context(_oHeaders))
+            {
+                var oContainer = (ICtProviderContainer)oContext.Config.Session;
+                var oRepManager = (ICtObjectManager)oContainer.get_Provider(1, (int)CtReportingManagers.CT_REPORTING_MANAGER);
+                ICtReporting oFC = (ICtReporting)oRepManager.GetObject(79, ACCESSFLAGS.OM_READ, 0);
+
+                Assert.IsNotNull(oFC);
+                foreach (CtReportingProperties i in Enum.GetValues(typeof(CtReportingProperties)))
+                {
+                    if (!(oFC.PropVal[(int)i] is null)) Debug.WriteLine($"{i}: {oFC.PropVal[(int)i]}");
+                }
+                foreach (CtReportingRelationships i in Enum.GetValues(typeof(CtReportingRelationships)))
+                {
+                    if (!(oFC.RelVal[(int)i] is null)) Debug.WriteLine($"{i}: {oFC.RelVal[(int)i]}");
+                }
+            }
+        }
     }
 }
+
