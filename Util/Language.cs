@@ -36,11 +36,27 @@ namespace CTSWeb.Util
         }
 
         public static (LanguageMasks, LanguageText.Type, string, ct_desctype)[] TypeInfo = new (LanguageMasks, LanguageText.Type, string, ct_desctype)[4] {
-            (LanguageMasks.ShortDesc, LanguageText.Type.Short, "SDesc", ct_desctype.ctdesc_short),
-            (LanguageMasks.LongDesc, LanguageText.Type.Long, "LDesc", ct_desctype.ctdesc_long),
-            (LanguageMasks.XDesc, LanguageText.Type.XL, "XDesc", ct_desctype.ctdesc_extralong),
-            (LanguageMasks.Comment, LanguageText.Type.Comment, "Comment", ct_desctype.ctdesc_comment)
+            (LanguageMasks.ShortDesc,   LanguageText.Type.Short,    "SDesc", ct_desctype.ctdesc_short),
+            (LanguageMasks.LongDesc,    LanguageText.Type.Long,     "LDesc", ct_desctype.ctdesc_long),
+            (LanguageMasks.XDesc,       LanguageText.Type.XL,       "XDesc", ct_desctype.ctdesc_extralong),
+            (LanguageMasks.Comment,     LanguageText.Type.Comment,  "Comment", ct_desctype.ctdesc_comment)
         };
+
+        public static string GetCode(Type viType)
+        {
+            string sRet = null;
+
+            foreach (var o in TypeInfo)
+            {
+                if (o.Item2 == viType)
+                {
+                    sRet = o.Item3;
+                    break;
+                }
+            }
+            if (sRet is null) throw new KeyNotFoundException($"Unknown type '{viType}'");
+            return sRet;
+        }
 
         public string CultureName { get; } // ISO culture code describes the language in a portable way. Never null. Linked to FC user languages
         public Dictionary<string, string> Texts;

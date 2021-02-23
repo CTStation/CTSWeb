@@ -234,9 +234,11 @@ namespace CTSWeb.Util
                         /* realease context */
                         roCon._session2.Logout();
                     }
-                    CTCLIENTSERVERLib.ICtSessionCtx sessionContext = (CTCLIENTSERVERLib.ICtSessionCtx)roCon._session2;
-                    sessionContext.ReleaseSessionCtx(roCon._session2);
-                    sessionContext = null;
+                    // Throws an invalidCast exception
+                    //CTCLIENTSERVERLib.ICtSessionCtx sessionContext = (CTCLIENTSERVERLib.ICtSessionCtx)roCon._session2;
+                    //sessionContext.ReleaseSessionCtx(roCon._session2);
+                    //sessionContext = null;
+
                     /* dé-initialisation de l'appli */
                     // this.cacc3.Uninitialize(true);
                     //this.cacc3 = null;

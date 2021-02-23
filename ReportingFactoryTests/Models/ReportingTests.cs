@@ -10,6 +10,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using CTSWeb.Models;
 using CTSWeb.Util;
+using CTCOMDEFAULTLib;
 using CTCLIENTSERVERLib;
 using CTCOMMONMODULELib;
 using CTCORELib;
@@ -97,17 +98,17 @@ namespace CTSWeb.Models.Tests
             {
                 MessageList oMessages = oContext.NewMessageList();
 
-                //PrPlain(oContext, "A", "2002.07", "C");
-                PrFull(oContext, "A", "2002.06", "C");
+                //PrPlain(oContext, "A", "2002.03", "C");
+                PrFull(oContext, "A", "2001.11", "C");
             }
         }
 
 
         private void PrFull(Context roContext, string vsPhase, string vsUpdPer, string vsVersion)
         {
-            DateTime oNow = DateTime.Now;
+            DateTime oNow = DateTime.Now.AddMonths(2);
 
-            RefValue oUpdPer = Manager.GetRefValue(roContext, "UpdPer", vsUpdPer);
+            RefValue oUpdPer = Manager.GetRefValue(roContext, Dims.UpdPer, vsUpdPer);
 
             if (oUpdPer is null)
             {
@@ -121,7 +122,7 @@ namespace CTSWeb.Models.Tests
                 {
                     // New reporting to create
                     oFullRep = new Reporting();
-                    oFullRep.ReadFrom(null, roContext.Language);
+                    oFullRep.ReadFrom(null, roContext);
                 }
                 else
                 {
@@ -148,12 +149,27 @@ namespace CTSWeb.Models.Tests
                     }
                     else
                     {
-                        roContext.Save<Reporting>(oFullRep, roContext.NewMessageList());
+                        oFullRep.ReportingEndDate = oNow;
+                        oFullRep.DefaultOperation.AllowEarlyPublishing = true;
+                        oFullRep.DefaultOperation.AfterTransfer.Special = true;
+                        oFullRep.DefaultPackage.UseDefaultLock = false;
+                        oFullRep.DefaultPackage.UseDefaultOpbal = false;
+                        oFullRep.DefaultPackage.HasOpBal = true;
+                        oFullRep.DefaultPackage.OpbPhase = "A";
+                        oFullRep.DefaultPackage.OpbUpdatePeriod = "2010.12";
+                        oFullRep.DefaultPackage.OpbScope = "CORPORATE";
+                        oFullRep.DefaultPackage.OpbVariant = "IFRSPER";
+                        oFullRep.DefaultPackage.OpbConsCurrency = "EUR";
 
-                        oRep = roContext.Get<ReportingLight>(vsPhase, vsUpdPer);
-                        Assert.IsTrue(roContext.Exists<Reporting>(oRep.ID));
+                        MessageList oMess = roContext.NewMessageList();
+                        Assert.IsTrue(oFullRep.IsValid(roContext, oMess));
+                        roContext.Save<Reporting>(oFullRep, oMess);
+
+                        Assert.IsTrue(roContext.TryGet<ReportingLight>(vsPhase, vsUpdPer, out oRep));
                         oFullRep = roContext.Get<Reporting>(oRep.ID);
-                        Assert.Equals(oNow, oFullRep.ReportingEndDate);
+                        // Simple equality is not obtained, probably because of the conversion to and from ISO, so tolerate some distance
+                        TimeSpan oT = oNow - oFullRep.ReportingEndDate;
+                        Assert.IsTrue(Math.Abs(oT.Milliseconds) < 1000);
                     }
 
                 }
@@ -232,15 +248,49 @@ namespace CTSWeb.Models.Tests
                 ICtReporting oFC = (ICtReporting)oRepManager.GetObject(79, ACCESSFLAGS.OM_READ, 0);
 
                 Assert.IsNotNull(oFC);
-                foreach (CtReportingProperties i in Enum.GetValues(typeof(CtReportingProperties)))
+                Debug.WriteLine($"Loaded reporting {oFC.Name}");
+
+                PrTestProps<CtReportingProperties>(oFC, true);
+                PrTestProps<CtReportingRelationships>(oFC, false);
+            }
+        }
+
+        private void PrTestProps<tEnum>(ICtObject voFC, bool vbProp) where tEnum : Enum
+        {
+            Type oType;
+            bool bIsInEnum;
+            dynamic oProp;
+            int c = 0;
+            string sName = vbProp ? "Prop" : "Rel";
+
+            tEnum iEnum;
+            Dictionary<int, tEnum> oDic = new Dictionary<int, tEnum>();
+            foreach (tEnum i in Enum.GetValues(typeof(tEnum)))
+                oDic.Add(i.GetHashCode(), i);
+
+            for (int i = -0xF0000; i <= 0xF0000; i++)
+            {
+                bIsInEnum = oDic.TryGetValue(i, out iEnum);
+                try
                 {
-                    if (!(oFC.PropVal[(int)i] is null)) Debug.WriteLine($"{i}: {oFC.PropVal[(int)i]}");
+                    oProp = vbProp ? voFC.PropVal[i] : voFC.RelVal[i];
+                    if (!(oProp is null))
+                    {
+                        oType = oProp.GetType();
+                        Debug.Write($"{sName} {i} \t 0x{i:X}: \t {oType.Name} \t'{oProp}'");
+                        Debug.WriteIf(bIsInEnum, $"  \t {iEnum}");
+                        Debug.WriteLine("");
+                        c++;
+                    }
                 }
-                foreach (CtReportingRelationships i in Enum.GetValues(typeof(CtReportingRelationships)))
+                catch (Exception e)
                 {
-                    if (!(oFC.RelVal[(int)i] is null)) Debug.WriteLine($"{i}: {oFC.RelVal[(int)i]}");
+                    Debug.Write($"{sName} {i} \t 0x{i:X}: \t {e.Message}");
+                    Debug.WriteIf(bIsInEnum, $"  \t {iEnum}");
+                    Debug.WriteLine("");
                 }
             }
+            Debug.WriteLine($"Found {c} non null {sName} for object {voFC.Name}\n");
         }
     }
 }

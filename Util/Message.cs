@@ -98,6 +98,21 @@ namespace CTSWeb.Util
            ("RF0452",MessageSeverity.Error, ( ("en-US", "Errors occured during this session. No modifications will be attempted", "Please reconnect and try again"),
                                               ("fr-FR", "Des erreurs ont eu lieu dans cette session. Les modification sont suspendues", "Reconnectez-vous et essayez une autre fois") )
             ),
+           ("RF0510",MessageSeverity.Error, ( ("en-US", "The reporting start date must be before the end date", "Please correct the dates"),
+                                              ("fr-FR", "La date de début de reporting doit être avant la date de fin", "Corrigez les dates") )
+            ),
+           ("RF0511",MessageSeverity.Error, ( ("en-US", "The package deadline date must be between the start and end date", "Please correct the dates"),
+                                              ("fr-FR", "La date butoir de remise des liasses doit être entre les dates de début et de fin", "Corrigez les dates") )
+            ),
+           ("RF0512",MessageSeverity.Error, ( ("en-US", "The package deadline date must be between the start and end date for entity {0}", "Please correct the dates"),
+                                              ("fr-FR", "La date butoir de remise des liasses doit être entre les dates de début et de fin pour l'unité {0}", "Corrigez les dates") )
+            ),
+           ("RF0513",MessageSeverity.Error, ( ("en-US", "In the automatic integration after pubication, a control level must be specified if and only if the advanced publication mode is selected", "Please correct the operation"),
+                                              ("fr-FR", "Dans l'intégration automatique après publicaton, un niveau de contrôle doit être spécifié si et seulementsi le mode Avancé est choisi", "Corrigez les paramètres d'exploitation") )
+            ),
+           ("RF0514",MessageSeverity.Error, ( ("en-US", "In the automatic integration after transfer, a control level must be specified if and only if the advanced publication mode is selected", "Please correct the operation"),
+                                              ("fr-FR", "Dans l'intégration automatique après pilotage, un niveau de contrôle doit être spécifié si et seulementsi le mode Avancé est choisi", "Corrigez les paramètres d'exploitation") )
+            ),
 
         };
     }

@@ -24,10 +24,27 @@ namespace CTSWeb.Util
 
 	// Public interface is like a collection:
 	//  GetAll <==> ToList
-	//  Get accesses by FC ID or by Name
-	//  Exists <==> Contains, also by ID or Name
+	//  Get accesses by FC ID or by Name or by 2 strings (framework, reporting). Throws exception if not found
+	//  Exists <==> Contains, also by ID or Name or 2 strings
+	//	TryGet does the same but doesn't throw exception
 	//  Save create or updates
 
+	public enum Dims
+	{
+		Phase,
+		Entity,
+		Currency,
+		FrameworkVersion,
+		Account,
+		Flow,
+		Nature,
+		Scope,
+		Variant,
+		ExRateType,
+		ExRateVersion,
+		UpdPer,
+		Period
+	}
 
 	public class ManagedObject
 	{
@@ -63,7 +80,6 @@ namespace CTSWeb.Util
 
 		// Duplicating the language in every object may seem wasteful
 		// However, we would otherwise need a pointer to the context, that is equally wasteful
-		private protected Language _oLanguage;
 		private string _sName;
 
 
@@ -71,15 +87,14 @@ namespace CTSWeb.Util
 		public string Name { get { return _sName; } set { _sName = value.ToUpperInvariant(); } }
 		public string LDesc;             // Ldesc in working language
 
-		public virtual void ReadFrom(ICtObject roObject, Language roLang)
+		public virtual void ReadFrom(ICtObject roObject, Context roContext)
 		{
-			_oLanguage = roLang;
 
 			if (!(roObject is null))
 			{
 				ID = roObject.ID;
 				Name = roObject.Name;
-				LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roLang.WorkingLanguage);
+				LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roContext.Language.WorkingLanguage);
 				_oLog.Debug($"Loaded managed object {Name}");
 			}
 		}
@@ -170,16 +185,54 @@ namespace CTSWeb.Util
 	}
 
 
+	// Set descriptions to empty string to force an empty desc. Null means 'do not change what's already there'
 	public class ManagedObjectWithDesc : ManagedObject
 	{
 		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 		public LanguageText[] Descriptions;
-		 
-		public override void ReadFrom(ICtObject roObject, Language roLang)
-		{
-			base.ReadFrom(roObject, roLang);
 
-			Descriptions = new LanguageText[roLang.SupportedLanguages.Count];
+
+		public string GetDesc(string vsCulture, LanguageText.Type viType)
+		{
+			bool bNotFound = true;
+			string sRet = null;
+			string sCode = LanguageText.GetCode(viType);
+
+			foreach (LanguageText o in Descriptions)
+			{
+				if (o.CultureName == vsCulture) {
+					if (o.Texts.ContainsKey(sCode)) sRet = o.Texts[sCode];
+					bNotFound = false;
+					break;
+				}
+			}
+			if (bNotFound) throw new KeyNotFoundException($"Unsupported language '{vsCulture}'");
+			return sRet;
+		}
+
+
+		public void SetDesc(string vsCulture, LanguageText.Type viType, string vsValue)
+		{
+			bool bNotFound = true;
+			string sCode = LanguageText.GetCode(viType);
+
+			foreach (LanguageText o in Descriptions)
+			{
+				if (o.CultureName == vsCulture) {
+					o.Texts[sCode] = vsValue; // Creates or updates
+					bNotFound = false;
+					break;
+				}
+			}
+			if (bNotFound) throw new KeyNotFoundException($"Unsupported language '{vsCulture}'");
+		}
+
+
+		public override void ReadFrom(ICtObject roObject, Context roContext)
+		{
+			base.ReadFrom(roObject, roContext);
+
+			Descriptions = new LanguageText[roContext.Language.SupportedLanguages.Count];
 
 			// Access to generic type static fields is possible only through reflexion
 			Type oType = this.GetType();
@@ -187,15 +240,17 @@ namespace CTSWeb.Util
 			int iFields = (int)((oField != null) ? oField.GetValue(null) : LanguageMasks.All);
 
 			int c = 0;
-			foreach ((lang_t, string) oLanguage in roLang.SupportedLanguages)
+			string s;
+			foreach ((lang_t, string) oLanguage in roContext.Language.SupportedLanguages)
 			{
-				Descriptions[c] = new LanguageText(oLanguage.Item1, roLang);
+				Descriptions[c] = new LanguageText(oLanguage.Item1, roContext.Language);
 				if (!(roObject is null))
 				{
 					if (Descriptions[c].CultureName != oLanguage.Item2) _oLog.Debug($"Invalid culture name: expected '{Descriptions[c].CultureName}' and found '{oLanguage.Item2}'");
 					foreach (var o in LanguageText.TypeInfo)
 					{
-						if ((iFields & (int)o.Item1) != 0) Descriptions[c].Texts[o.Item3] = Language.Description(roObject, o.Item2, oLanguage.Item1);
+						s = Language.Description(roObject, o.Item2, oLanguage.Item1);
+						if (((iFields & (int)o.Item1) != 0) && (!(s is null))) Descriptions[c].Texts[o.Item3] = s;
 					}
 				}
 				c++;
@@ -212,7 +267,7 @@ namespace CTSWeb.Util
 
 			foreach (LanguageText oText in Descriptions)
 			{
-				if (_oLanguage.TryGetLanguageID(oText.CultureName, out lang_t iLang))
+				if (roContext.Language.TryGetLanguageID(oText.CultureName, out lang_t iLang))
 				{
 					foreach (var o in LanguageText.TypeInfo)
 					{
@@ -221,7 +276,7 @@ namespace CTSWeb.Util
 							sOld = Language.Description(roObject, o.Item2, iLang);
 							sNew = oText.Texts[o.Item3];
 							if (bTest && (!(sNew is null)) && (sOld != sNew)) roMess.Add("RF0310", o.Item3 + ((int)iLang).ToString(), sNew, sOld);
-							Language.SetDesc(roObject, o.Item2, iLang, sNew);
+							if (!(sNew is null)) Language.SetDesc(roObject, o.Item2, iLang, sNew);
 						}
 					}
 				} // No else: if language isn't found or active, ignore
@@ -246,9 +301,9 @@ namespace CTSWeb.Util
 		public DateTime UpdateDate;
 		public int UpdateAuthor;
 
-		public override void ReadFrom(ICtObject roObject, Language roLang)
+		public override void ReadFrom(ICtObject roObject, Context roContext)
 		{
-			base.ReadFrom(roObject, roLang);
+			base.ReadFrom(roObject, roContext);
 
 			if (!(roObject is null))
 			{
@@ -296,7 +351,7 @@ namespace CTSWeb.Util
 		private static readonly Dictionary<Type, Func<Context, ICtObjectManager, string, string, ICtObject>> _oType2Delegate = 
 							new Dictionary<Type, Func<Context, ICtObjectManager, string, string, ICtObject>>();
 
-		private static readonly Dictionary<string, PrDimensionAccess> _oCode2DimAccess = new Dictionary<string, PrDimensionAccess>();
+		private static readonly Dictionary<Dims, PrDimensionAccess> _oCode2DimAccess = new Dictionary<Dims, PrDimensionAccess>();
 
 		private class PrDimensionAccess
 		{
@@ -319,26 +374,29 @@ namespace CTSWeb.Util
 
 		static Manager()
 		{
+			// Edit Dis enum to add dimensions
 			// Give access mode to ref tables or dimensions. Stores a PrDimensionAccess
-			Dictionary<string, (bool, int, int)> oAccess = new Dictionary<string, (bool, int, int)>()
+			Dictionary<Dims, (bool, int, int)> oAccess = new Dictionary<Dims, (bool, int, int)>()
 			{
-				{ "Phase",              (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_PHASE, 0) },
-				{ "Entity",             (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_ENTITY, 0) },
-				{ "Currency",           (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_CURRENCY, 0) },
-				{ "FrameworkVersion",   (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_FRAMEWORKVERSION, 0) },
-				{ "Account",            (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_ACCOUNT, 0) },
-				{ "Flow",               (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_FLOW, 0) },
-				{ "Nature",             (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_NATURE, 0) },
-				{ "ExRateType",         (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATETYPE, 0) },
-				{ "ExRateVersion",      (true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATEVERSION, 0) },
-				{ "UpdPer",             (false, 0, (int)CTCOMMONMODULELib.ct_dimension.DIM_UPDPER) },
-				{ "Period",             (false, 0, (int)CTCOMMONMODULELib.ct_dimension.DIM_PERIOD) },
+				{ Dims.Phase,				(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_PHASE, 0) },
+				{ Dims.Entity,				(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_ENTITY, 0) },
+				{ Dims.Currency,			(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_CURRENCY, 0) },
+				{ Dims.FrameworkVersion,	(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_FRAMEWORKVERSION, 0) },
+				{ Dims.Account,				(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_ACCOUNT, 0) },
+				{ Dims.Flow,				(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_FLOW, 0) },
+				{ Dims.Nature,				(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_NATURE, 0) },
+				{ Dims.Scope,				(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_SCOPE_CODE, 0) },
+				{ Dims.Variant,				(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_VARIANT, 0) },
+				{ Dims.ExRateType,			(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATETYPE, 0) },
+				{ Dims.ExRateVersion,		(true, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_EXRATEVERSION, 0) },
+				{ Dims.UpdPer,				(false, 0, (int)CTCOMMONMODULELib.ct_dimension.DIM_UPDPER) },
+				{ Dims.Period,				(false, 0, (int)CTCOMMONMODULELib.ct_dimension.DIM_PERIOD) },
 			};
 
-			foreach (string sDimName in oAccess.Keys)
+			foreach (Dims iDim in oAccess.Keys)
 			{
-				PrDimensionAccess o = new PrDimensionAccess(oAccess[sDimName]);
-				_oCode2DimAccess.Add(sDimName, o);
+				PrDimensionAccess o = new PrDimensionAccess(oAccess[iDim]);
+				_oCode2DimAccess.Add(iDim, o);
 			}
 		}
 
@@ -479,7 +537,7 @@ namespace CTSWeb.Util
 				foreach (ICtObject oFCObj in oCollection)
 				{
 					o = new tObject();
-					o.ReadFrom(oFCObj, roContext.Language);
+					o.ReadFrom(oFCObj, roContext);
 					oRet.Add(o);
 				}
 			});
@@ -493,7 +551,7 @@ namespace CTSWeb.Util
 		{
 			ICtObject oFCObj = PrGet<tObject>(roContext, viID);
 			tObject oRet = new tObject();
-			oRet.ReadFrom(oFCObj, roContext.Language);
+			oRet.ReadFrom(oFCObj, roContext);
 			return oRet;
 		}
 
@@ -501,7 +559,7 @@ namespace CTSWeb.Util
 		{
 			ICtObject oFCObj = PrGet<tObject>(roContext, vsName);
 			tObject oRet = new tObject();
-			oRet.ReadFrom(oFCObj, roContext.Language);
+			oRet.ReadFrom(oFCObj, roContext);
 			return oRet;
 		}
 
@@ -509,7 +567,7 @@ namespace CTSWeb.Util
 		{
 			ICtObject oFCObj = PrGet<tObject>(roContext, vsID1, vsID2);
 			tObject oRet = new tObject();
-			oRet.ReadFrom(oFCObj, roContext.Language);
+			oRet.ReadFrom(oFCObj, roContext);
 			return oRet;
 		}
 
@@ -523,7 +581,7 @@ namespace CTSWeb.Util
 			if (bRet)
 			{
 				roRet = new tObject();
-				roRet.ReadFrom(oFCObj, roContext.Language);
+				roRet.ReadFrom(oFCObj, roContext);
 			}
 			else
 			{
@@ -539,7 +597,7 @@ namespace CTSWeb.Util
 			if (bRet)
 			{
 				roRet = new tObject();
-				roRet.ReadFrom(oFCObj, roContext.Language);
+				roRet.ReadFrom(oFCObj, roContext);
 			}
 			else
 			{
@@ -555,7 +613,7 @@ namespace CTSWeb.Util
 			if (bRet)
 			{
 				roRet = new tObject();
-				roRet.ReadFrom(oFCObj, roContext.Language);
+				roRet.ReadFrom(oFCObj, roContext);
 			}
 			else
 			{
@@ -691,18 +749,18 @@ namespace CTSWeb.Util
 
 
 
-		public static HashSet<string> GetRefValueCodes(Context roContext, string vsTableCode)
+		public static HashSet<string> GetRefValueCodes(Context roContext, Dims viTableCode)
 		{
 			HashSet<string> oRet = new HashSet<string>();
-			if (!_oCode2DimAccess.TryGetValue(vsTableCode, out PrDimensionAccess oDimAccess))
+			if (!_oCode2DimAccess.TryGetValue(viTableCode, out PrDimensionAccess oDimAccess))
 			{
-				throw new ArgumentException($"Unrecognized FC table '{vsTableCode}'");
+				throw new ArgumentException($"Unrecognized FC table '{viTableCode}'");
 			}
 			else
 			{
 				if (!oDimAccess.HasRefTable)
 				{
-					throw new ArgumentException($"{vsTableCode} does not have a list of elements");
+					throw new ArgumentException($"{viTableCode} does not have a list of elements");
 				}
 				else
 				{
@@ -722,13 +780,13 @@ namespace CTSWeb.Util
 
 
 
-		public static Models.RefValue GetRefValue(Context roContext, string vsTableCode, string vsName)
+		public static Models.RefValue GetRefValue(Context roContext, Dims viTableCode, string vsName)
 		{
 			Models.RefValue oRet = null;
 			CTCORELib.ICtRefValue oRefVal = null;
-			if (!_oCode2DimAccess.TryGetValue(vsTableCode, out PrDimensionAccess oDimAccess))
+			if (!_oCode2DimAccess.TryGetValue(viTableCode, out PrDimensionAccess oDimAccess))
 			{
-				throw new ArgumentException($"Unrecognized FC table '{vsTableCode}'");
+				throw new ArgumentException($"Unrecognized FC table '{viTableCode}'");
 			}
 			else
 			{
@@ -751,10 +809,48 @@ namespace CTSWeb.Util
 			if (!(oRefVal is null))
 			{
 				oRet = new Models.RefValue();
-				oRet.ReadFrom(oRefVal, roContext.Language);
+				oRet.ReadFrom(oRefVal, roContext);
 			}
 			return oRet;
 		}
 
+
+		public static Models.RefValue GetRefValue(Context roContext, Dims viTableCode, int? viID)
+		{
+			Models.RefValue oRet = null;
+
+			if (!(viID is null)) 
+			{
+				CTCORELib.ICtRefValue oRefVal = null;
+				if (!_oCode2DimAccess.TryGetValue(viTableCode, out PrDimensionAccess oDimAccess))
+				{
+					throw new ArgumentException($"Unrecognized FC table '{viTableCode}'");
+				}
+				else
+				{
+					ICtProviderContainer oContainer = (ICtProviderContainer)roContext.Config.Session;
+					COMMonitor(roContext, () =>
+					{
+						if (oDimAccess.HasRefTable)
+						{
+							CTCORELib.ICtRefValueManager oManager = (CTCORELib.ICtRefValueManager)oContainer.get_Provider(1, oDimAccess.RefTableManagerID);
+							oRefVal = oManager.RefValue[(int)viID];
+						}
+						else
+						{
+							CTCORELib.ICtDimensionManager oDimManager = (CTCORELib.ICtDimensionManager)(oContainer.get_Provider(1, (int)CTCORELib.ct_core_manager.CT_DIMENSION_MANAGER));
+							CTCORELib.ICtDimension oDim = oDimManager.get_Dimension(oDimAccess.DimensionId);
+							oRefVal = oDim.RefValue[(int)viID];
+						}
+					});
+				}
+				if (!(oRefVal is null))
+				{
+					oRet = new Models.RefValue();
+					oRet.ReadFrom(oRefVal, roContext);
+				}
+			}
+			return oRet;
+		}
 	}
 }

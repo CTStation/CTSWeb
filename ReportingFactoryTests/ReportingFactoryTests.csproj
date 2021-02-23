@@ -44,6 +44,11 @@
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtClientServerLib.dll</HintPath>
     </Reference>
+    <Reference Include="Interop.CtComDefaultLib, Version=10.1.300.0, Culture=neutral, PublicKeyToken=48dbc9251138b03a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+      <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtComDefaultLib.dll</HintPath>
+    </Reference>
     <Reference Include="Interop.CtCommonModuleLib">
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtCommonModuleLib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
@@ -67,6 +72,7 @@
       <HintPath>..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.3.6.0\lib\net45\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualStudio.TestPlatform.TestFramework, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\MSTest.TestFramework.2.1.2\lib\net45\Microsoft.VisualStudio.TestPlatform.TestFramework.dll</HintPath>
     </Reference>

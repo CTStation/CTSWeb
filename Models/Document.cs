@@ -14,47 +14,38 @@
 using System;
 using System.Collections.Generic;
 using log4net;
-using CTREPORTINGMODULELib;
-using CTKREFLib;
+using CTDOCMODULELib;
 using CTCLIENTSERVERLib;
 using CTCORELib;
 using CTSWeb.Util;
 
 namespace CTSWeb.Models
 {
-
-
-
-    public class ExchangeRate
+    public class Folder : ManagedObjectWithDesc
     {
-        public int ID;
-        public string Name;
-    }
+        static Folder()
+        {
+            Manager.Register<Folder>((int)DOCMANAGERID.CT_FOLDER_MANAGER);
+        }
+
+        // Argument-less constructor
+        public Folder() { }
+
+        private ICtBookFolder _oFC;
+
+        public ICtBookFolder FCValue() => _oFC;
 
 
-    public class ExchangeRateVersion
-    {
-        public int ID;
-        public string Name;
+        public override void ReadFrom(ICtObject roObject, Context roContext)
+        {
+            base.ReadFrom(roObject, roContext);
 
-    }
-
-    public class ExchangeRateType
-    {
-        public int ID;
-        public string Name;
-
-    }
-
-
-    public class ReportingModifyComment
-    {
-
-    }
-
-    public class ReportingHierarchyDate
-    {
-
+            if (!(roObject is null))
+            {
+                ICtBookFolder oFC = (ICtBookFolder)roObject;
+                _oFC = oFC;
+            }
+        }
     }
 }
 

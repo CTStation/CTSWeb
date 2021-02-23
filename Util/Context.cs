@@ -180,24 +180,26 @@ namespace CTSWeb.Util
 
 
         // Cache for RetTable values
-        private readonly Dictionary<string, HashSet<string>> _oRefValues = new Dictionary<string, HashSet<string>>();
+        private readonly Dictionary<Dims, HashSet<string>> _oRefValues = new Dictionary<Dims, HashSet<string>>();
 
-        public HashSet<string> GetRefValues(string vsTableName)
+        public HashSet<string> GetRefValues(Dims viTableName)
         {
             HashSet<string> oRet;
-            if (_oRefValues.ContainsKey(vsTableName))
+            if (_oRefValues.ContainsKey(viTableName))
             {
-                oRet = _oRefValues[vsTableName];
+                oRet = _oRefValues[viTableName];
             }
             else
             {
-                oRet = Manager.GetRefValueCodes(this, vsTableName);
-                _oRefValues.Add(vsTableName, oRet);
+                oRet = Manager.GetRefValueCodes(this, viTableName);
+                _oRefValues.Add(viTableName, oRet);
             }
             return oRet;
         }
 
-        public Models.RefValue GetRefValue(string vsTable, string vsName)                             => Manager.GetRefValue(this, vsTable, vsName);
+        public Models.RefValue GetRefValue(Dims viTable, string vsName) => Manager.GetRefValue(this, viTable, vsName);
+
+        public Models.RefValue GetRefValue(Dims viTable, int viID) => Manager.GetRefValue(this, viTable, viID);
 
         #endregion
 

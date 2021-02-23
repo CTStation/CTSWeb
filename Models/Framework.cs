@@ -29,8 +29,8 @@ namespace CTSWeb.Models
             // Get framework from phase and version 
             Manager.RegisterDelegate<Framework>((Context roContext, ICtObjectManager voMgr, string vsID1, string vsID2) =>
                                                         (ICtObject)((ICtFrameworkManager)voMgr).FrameworkFromPhaseVersion[
-                                                            roContext.GetRefValue("Phase", vsID1).FCRefValue(),
-                                                            roContext.GetRefValue("FrameworkVersion", vsID2).FCRefValue()]
+                                                            roContext.GetRefValue(Dims.Phase, vsID1).FCValue(),
+                                                            roContext.GetRefValue(Dims.FrameworkVersion, vsID2).FCValue()]
                                                     );
         }
 
@@ -40,6 +40,7 @@ namespace CTSWeb.Models
         public string Phase;
         public string Version;
         public kref_framework_status Status;
+        public SortedList<string, ControlSet> ControlSets = new SortedList<string, ControlSet>();
         public SortedList<short, ControlLevel> ControlLevels = new SortedList<short, ControlLevel>();
 
         private IRefObjRef _oFC;
@@ -47,9 +48,9 @@ namespace CTSWeb.Models
         public IRefObjRef FCValue() => _oFC;
 
 
-        public override void ReadFrom(ICtObject roObject, Language roLang)
+        public override void ReadFrom(ICtObject roObject, Context roContext)
         {
-            base.ReadFrom(roObject, roLang);
+            base.ReadFrom(roObject, roContext);
 
             if (!(roObject is null))
             {
@@ -61,8 +62,14 @@ namespace CTSWeb.Models
                 foreach (ICtObject oLevel in oRef.ContLevelList)
                 {
                     ControlLevel o = new ControlLevel();
-                    o.ReadFrom(oLevel, roLang);
+                    o.ReadFrom(oLevel, roContext);
                     ControlLevels.Add(o.Rank, o);
+                }
+                foreach (ICtObject oSet in oRef.CtrlSetList)
+                {
+                    ControlSet o = new ControlSet();
+                    o.ReadFrom(oSet, roContext);
+                    ControlSets.Add(o.Name, o);
                 }
             }
         }
@@ -70,6 +77,11 @@ namespace CTSWeb.Models
         public ControlLevel GetControlLevel(short? viRank)
         {
             return viRank is null ? null : ControlLevels[(short)viRank];
+        }
+
+        public ControlSet GetSetOfControl(string vsName)
+        {
+            return vsName is null ? null : ControlSets[vsName];
         }
     }
 
@@ -120,43 +132,50 @@ namespace CTSWeb.Models
     //}
 
 
-    public class ControlsSets
+    public class ControlSet : ManagedObject
     {
-        public int ID;
-        public string Name;
-        public List<FCControl> Controls;
-        //List<ControlsSets> ControlSets;
-        public List<ControlSubSets> ControlSubSets;
-
-
-        public ControlsSets(IRefControlSet obj)
+        static ControlSet()
         {
-            ID = obj.ID;
-            Name = obj.Name;
-            Controls = new List<FCControl>();
-            ControlSubSets = new List<ControlSubSets>();
-            foreach (IRefCtrlFamily refObjRef in obj.Content)
-            {
+        // No registery
+        }
 
-                switch (refObjRef.Type)
-                {
-                    case -524234: // controlset
-                        //ControlSets.Add(new ControlsSets((IRefControlSet)refObjRef));
+        // Argument-less constructor
+        public ControlSet() { }
 
-                        break;
+        private IRefControlSet _oFC;
 
-                    case -524221: // subset
-                        ControlSubSets.Add(new ControlSubSets((IRefCtrlFamily)refObjRef));
-                        break;
-                    default:
-                        Controls.Add(new FCControl((IRefControl)refObjRef));
-                        break;
+        public IRefControlSet FCValue() => _oFC;
 
-                }
-
-            }
+        // public List<FCControl> Controls;
+        //List<ControlsSets> ControlSets;
+        //public List<ControlSubSets> ControlSubSets;
 
 
+        public override void ReadFrom(ICtObject roObject, Context roContext)
+        {
+            base.ReadFrom(roObject, roContext);
+
+            _oFC = (IRefControlSet)roObject;
+            //foreach (IRefCtrlFamily refObjRef in obj.Content)
+            //{
+
+            //    switch (refObjRef.Type)
+            //    {
+            //        case -524234: // controlset
+            //            //ControlSets.Add(new ControlsSets((IRefControlSet)refObjRef));
+
+            //            break;
+
+            //        case -524221: // subset
+            //            ControlSubSets.Add(new ControlSubSets((IRefCtrlFamily)refObjRef));
+            //            break;
+            //        default:
+            //            Controls.Add(new FCControl((IRefControl)refObjRef));
+            //            break;
+
+            //    }
+
+            //}
         }
     }
 
@@ -227,9 +246,9 @@ namespace CTSWeb.Models
         public IRefLevel FCValue() => _oFC;
 
 
-        public override void ReadFrom(ICtObject roObject, Language roLang)
+        public override void ReadFrom(ICtObject roObject, Context roContext)
         {
-            base.ReadFrom(roObject, roLang);
+            base.ReadFrom(roObject, roContext);
 
             if (!(roObject is null))
             {

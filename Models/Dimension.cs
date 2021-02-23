@@ -50,9 +50,9 @@ namespace CTSWeb.Models
 
         public List<Dimension> Dimensions;
 
-        public override void ReadFrom(ICtObject roObject, Language roLang)
+        public override void ReadFrom(ICtObject roObject, Context roContext)
         {
-            base.ReadFrom(roObject, roLang);
+            base.ReadFrom(roObject, roContext);
 
             if (!(roObject is null))
             {
@@ -61,7 +61,7 @@ namespace CTSWeb.Models
                 foreach (ICtObjectBase o in oSource.Dimensions)
                 {
                     Dimension oDim = new Dimension();
-                    oDim.ReadFrom((ICtObject)o, roLang);
+                    oDim.ReadFrom((ICtObject)o, roContext);
                     this.Dimensions.Add(oDim);
                 }
             }
@@ -97,11 +97,11 @@ namespace CTSWeb.Models
         public RefValue() { }
 
         private ICtRefValue _oFCRefValue;
-        public ICtRefValue FCRefValue() => _oFCRefValue;
+        public ICtRefValue FCValue() => _oFCRefValue;
 
-        public override void ReadFrom(ICtObject roObject, Language roLang)
+        public override void ReadFrom(ICtObject roObject, Context roContext)
         {
-            base.ReadFrom(roObject, roLang);
+            base.ReadFrom(roObject, roContext);
 
             _oFCRefValue = (ICtRefValue)roObject;
         }

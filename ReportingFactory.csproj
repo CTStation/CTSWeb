@@ -75,12 +75,20 @@
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtCoreLib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
+    <Reference Include="Interop.CtDocModuleLib">
+      <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtDocModuleLib.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
     <Reference Include="Interop.CtKrefLib">
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtKrefLib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="Interop.CtReportingModuleLib">
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtReportingModuleLib.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Interop.CtReportingUILib">
+      <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtReportingUILib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="Interop.CtTransferLib">
@@ -170,7 +178,7 @@
     </Compile>
     <Compile Include="Util\Context.cs" />
     <Compile Include="Models\Help.cs" />
-    <Compile Include="Models\Models.cs" />
+    <Compile Include="Models\Document.cs" />
     <Compile Include="Models\Reporting.cs" />
     <Compile Include="Util\TimedCache.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

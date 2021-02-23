@@ -36,23 +36,23 @@ namespace CTSWeb.Util
     }
 
 
-    public class ControlSet : ControlBase, IControl
-    {
-        public List<IControl> Controls = new List<IControl>();
+    //public class ControlSet : ControlBase, IControl
+    //{
+    //    public List<IControl> Controls = new List<IControl>();
 
-        public bool Pass(DataSet voData, MessageList roMess, Filter<string> voFilter = null)
-        {
-            bool bRet = true;
-            bool bTagsRequired = (voFilter != null);
-            bool bShouldRun = !bTagsRequired;
-            foreach (IControl oControl in Controls)
-            {
-                if (bTagsRequired) bShouldRun = voFilter.Match(oControl.Tags);
-                if (bShouldRun) bRet &= oControl.Pass(voData, roMess);
-            }
-            return bRet;
-        }
-    }
+    //    public bool Pass(DataSet voData, MessageList roMess, Filter<string> voFilter = null)
+    //    {
+    //        bool bRet = true;
+    //        bool bTagsRequired = (voFilter != null);
+    //        bool bShouldRun = !bTagsRequired;
+    //        foreach (IControl oControl in Controls)
+    //        {
+    //            if (bTagsRequired) bShouldRun = voFilter.Match(oControl.Tags);
+    //            if (bShouldRun) bRet &= oControl.Pass(voData, roMess);
+    //        }
+    //        return bRet;
+    //    }
+    //}
 
 
     public class ControlTablesExists : ControlBase, IControl
