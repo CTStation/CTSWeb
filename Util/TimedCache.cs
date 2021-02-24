@@ -134,14 +134,7 @@ namespace CTSWeb.Util
                         }
 					}
 				}
-				try
-                {
-					Thread.Sleep(oCache._iLifespanTicks / S_Resolution);
-				} 
-				catch	(ThreadAbortException e)
-                {
-					_oLog.Debug($"While going to sleep: {e}");
-                }
+				Thread.Sleep(oCache._iLifespanTicks / S_Resolution);
 			}
 		}
 	}

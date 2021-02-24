@@ -87,10 +87,6 @@
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtReportingModuleLib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
-    <Reference Include="Interop.CtReportingUILib">
-      <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtReportingUILib.dll</HintPath>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-    </Reference>
     <Reference Include="Interop.CtTransferLib">
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtTransferLib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>

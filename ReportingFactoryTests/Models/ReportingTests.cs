@@ -239,7 +239,7 @@ namespace CTSWeb.Models.Tests
 
 
         [TestMethod()]
-        public void ListProperties()
+        public void ListRepProperties()
         {
             using (Context oContext = new Context(_oHeaders))
             {
@@ -252,6 +252,24 @@ namespace CTSWeb.Models.Tests
 
                 PrTestProps<CtReportingProperties>(oFC, true);
                 PrTestProps<CtReportingRelationships>(oFC, false);
+            }
+        }
+
+        [TestMethod()]
+        public void ListRepEntityRepProperties()
+        {
+            using (Context oContext = new Context(_oHeaders))
+            {
+                var oContainer = (ICtProviderContainer)oContext.Config.Session;
+                var oRepManager = (ICtObjectManager)oContainer.get_Provider(1, (int)CtReportingManagers.CT_REPORTING_MANAGER);
+                ICtReporting oFC = (ICtReporting)oRepManager.GetObject(71, ACCESSFLAGS.OM_READ, 0);
+
+                Assert.IsNotNull(oFC);
+                Debug.WriteLine($"Loaded reporting {oFC.Name}");
+
+                ICtEntityReporting oEntRep = (ICtEntityReporting)oFC.RelatedEntityReportingCollection.GetAt(1);
+                PrTestProps<CtReportingProperties>(oEntRep, true);
+                PrTestProps<CtReportingRelationships>(oEntRep, false);
             }
         }
 

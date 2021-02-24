@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using log4net;
 using CTCLIENTSERVERLib;
+using CTTRANSFERLib;
 using CTSWeb.Util;
 
 namespace CTSWeb.Models
@@ -30,6 +31,31 @@ namespace CTSWeb.Models
 
         // Argument-less constructor
         public UserLight() { }
+    }
+
+
+
+    public class Recipient : ManagedObject // Inherits ID and Name and LDesc
+    {
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        static Recipient()
+        {
+            Manager.Register<Recipient>(-524253);
+        }
+
+        // Argument-less constructor
+        public Recipient() { }
+
+        private ICtRecipient _oFCRefValue;
+        public ICtRecipient FCValue() => _oFCRefValue;
+
+        public override void ReadFrom(ICtObject roObject, Context roContext)
+        {
+            base.ReadFrom(roObject, roContext);
+
+            _oFCRefValue = (ICtRecipient)roObject;
+        }
     }
 }
 

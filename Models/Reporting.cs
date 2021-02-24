@@ -42,15 +42,15 @@ namespace CTSWeb.Models
         public string UpdatePeriod;
         public string FrameworkVersion;
 
-        public DateTime ReportingStartDate = DateTime.Now;
-        public DateTime ReportingEndDate = DateTime.Now.AddMonths(1);
+        public DateTime ReportingStartDate;
+        public DateTime ReportingEndDate;
 
         public override void ReadFrom(ICtObject roObject, Context roContext)
         {
             base.ReadFrom(roObject, roContext);
 
 
-            if(!(roObject is null)) 
+            if (!(roObject is null))
             {
                 ICtReporting reporting = (ICtReporting)roObject;
 
@@ -59,6 +59,12 @@ namespace CTSWeb.Models
                 FrameworkVersion = reporting.FrameworkVersion.Name;
                 ReportingStartDate = reporting.ReportingStartDate;
                 ReportingEndDate = reporting.ReportingEndDate;
+            }
+            else
+            {
+                // Reasonable defaults to pass the validations
+                ReportingStartDate = DateTime.Now;
+                ReportingEndDate = DateTime.Now.AddMonths(1);
             }
         }
 
@@ -100,7 +106,6 @@ namespace CTSWeb.Models
     }
 
 
-   
     public class Reporting : ReportingLight
     {
         private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
@@ -125,14 +130,14 @@ namespace CTSWeb.Models
         //public ExchangeRateUpdatePeriod ExchangeRateUpdatePeriod;
         //public ExchangeRateVersion ExchangeRateVersion;
         //public ExchangeRateType ExchangeRateType;
-        //public List<Period> Periods;
+
         //public uint ReportingModifyComment;
         //public DateTime ReportingHierarchyDate;
 
-        public Package DefaultPackage = new Package();
-        public Restriction DefaultRestriction = new Restriction();
-        public Operation DefaultOperation = new Operation();
-        public List<EntityReporting> RelatedEntityReportingCollection = new List<EntityReporting>();
+        public Package DefaultPackage                 = new Package();
+        public Restriction DefaultRestriction         = new Restriction();
+        public Operation DefaultOperation             = new Operation();
+        public List<EntityReporting> EntityReportings = new List<EntityReporting>();
 
 
         public override void ReadFrom(ICtObject roObject, Context roContext)
@@ -147,12 +152,9 @@ namespace CTSWeb.Models
                 Framework = new Framework();
                 Framework.ReadFrom((ICtObject)oFC.Framework, roContext);
 
-                DefaultPackage.ReadFrom(oFC, roContext);
-
-                // TODO restriction
-
-                DefaultOperation.ReadFrom(oFC, roContext);
-
+                DefaultPackage.ReadFrom(roObject, roContext);
+                DefaultRestriction.ReadFrom(roObject, roContext);
+                DefaultOperation.ReadFrom(roObject, roContext);
 
                 EntityReporting o;
                 if (!(oFC.RelatedEntityReportingCollection is null))
@@ -161,17 +163,9 @@ namespace CTSWeb.Models
                     {
                         o = new EntityReporting();
                         o.ReadFrom(oFCDetail, roContext);
-                        RelatedEntityReportingCollection.Add(o);
+                        EntityReportings.Add(o);
                     }
                 }
-
-                //Periods = new List<Period>();
-                //foreach (ICtRefValue period in reporting.Periods)
-                //{
-                //    Periods.Add(new Period() { ID = period.ID, Name = period.Name });
-                //}
-                //ReportingModifyComment = reporting.ReportingModifyComment;
-                //ReportingHierarchyDate = reporting.ReportingHierarchyDate;
 
                 _oLog.Debug($"Read {Phase} - {UpdatePeriod}");
             }
@@ -214,10 +208,13 @@ namespace CTSWeb.Models
             // Status is not saved
 
             DefaultPackage.WriteInto(oFC, roMess, roContext, Framework);
-            //TODO restriction
+            DefaultRestriction.WriteInto(oFC, roMess, roContext);
             DefaultOperation.WriteInto(oFC, roMess, roContext, Framework);
 
-            //TODO entityreporting
+            foreach (EntityReporting o in EntityReportings)
+            {
+                o.WriteInto(oFC, roMess, roContext, Framework);
+            }
 
             _oLog.Debug($"Writen {this.GetType().Name} {Phase} - {UpdatePeriod}");
         }
@@ -230,15 +227,33 @@ namespace CTSWeb.Models
 
             if (bRet) bRet = (!(ReportingStartDate == default)) && (!(ReportingEndDate == default)) && (ReportingStartDate <= ReportingEndDate);
             if (!bRet) roMess.Add("RF0510");
-            if (bRet) bRet = (!(DefaultOperation.PackPublishingCutOffDate == default)) && (ReportingStartDate <= DefaultOperation.PackPublishingCutOffDate) && (DefaultOperation.PackPublishingCutOffDate <= ReportingEndDate);
+            if (bRet) bRet = (!(DefaultOperation.PackPublishingCutOffDate == default)) 
+                    && (ReportingStartDate <= DefaultOperation.PackPublishingCutOffDate) 
+                    && (DefaultOperation.PackPublishingCutOffDate <= ReportingEndDate);
             if (!bRet) roMess.Add("RF0511");
-            // TODO: dates pour toutes les liasses, message 512
             if (bRet) bRet = (DefaultOperation.AfterPublication.Level is null) ^ (DefaultOperation.AfterPublication.Advanced);
             if (!bRet) roMess.Add("RF0513");
             if (bRet) bRet = (DefaultOperation.AfterTransfer.Level is null) ^ (DefaultOperation.AfterTransfer.Advanced);
             if (!bRet) roMess.Add("RF0514");
+            foreach (EntityReporting o in EntityReportings)
+            {
+                if (bRet)
+                {
+                    bRet = (!(o.PackOperation.PackPublishingCutOffDate == default)) 
+                        && (ReportingStartDate <= o.PackOperation.PackPublishingCutOffDate) 
+                        && (o.PackOperation.PackPublishingCutOffDate <= ReportingEndDate);
+                    if (!bRet) roMess.Add("RF0512", o.Entity);
+                    if (bRet) bRet = (o.PackOperation.AfterPublication.Level is null) ^ (o.PackOperation.AfterPublication.Advanced);
+                    if (!bRet) roMess.Add("RF0515", o.Entity);
+                    if (bRet) bRet = (o.PackOperation.AfterTransfer.Level is null) ^ (o.PackOperation.AfterTransfer.Advanced);
+                    if (!bRet) roMess.Add("RF0516", o.Entity);
+                }
+                else
+                {
+                    break;
+                }
+            }
 
-            // TODO entityReporting
             return bRet;
         }
 
@@ -289,9 +304,7 @@ namespace CTSWeb.Models
                             {
                                 oFullRep.ReportingStartDate = (DateTime)o["ReportingStartDate"];
                                 oFullRep.ReportingEndDate = (DateTime)o["ReportingEndDate"];
-                                // Desc is set automatically from Phase in all languages
-                                // Should not save each time. Maybe get the reporting from the list
-                                // TODO: see why doesn t work
+                                // TODO  Should not save each time. Maybe get the reporting from the list
                                 // Save only once and not per line
                                 roContext.Save<Reporting>(oFullRep, roMessages);
                                 oRet.Add(oFullRep);
@@ -324,44 +337,44 @@ namespace CTSWeb.Models
 
         public string Entity;
         public string InputCurrency;
-        public bool IsInputSiteLocal;
+        public string InputSite;
+        public string PublicationSite;
 
-        public Operation PackOperation;
+        public Package PackPackage = new Package();
+        public Restriction PackRestriction = new Restriction();
+        public Operation PackOperation = new Operation();
 
         public override void ReadFrom(ICtObject roObject, Context roContext)
         {
-            base.ReadFrom(roObject, roContext);
+            //base.ReadFrom(roObject, roContext);
 
 
             if (!(roObject is null))
             {
                 ICtEntityReporting oFC = (ICtEntityReporting)roObject;
 
-                Entity = oFC.Entity.Name;
-                InputCurrency = oFC.InputCurrency.Name;
-                IsInputSiteLocal = oFC.IsInputSiteLocal;     //TODO InputRecipient; TransferRecipient PublishingRecipient
-                //PackOperation = new Operation() {
-                //    PackPublishingCutOffDate = oFC.DefaultPackOperation.PackPublishingCutOffDate,
-                //    AllowEarlyPublishing = oFC.DefaultPackOperation.AllowEarlyPublishing,
-                //    IntegrateAfterPublication = oFC.DefaultPackOperation.IntegrateAfterPublication,
-                //    IntegrateAfterTransfer = oFC.DefaultPackOperation.IntegrateAfterTranfer
-                //};
+                Entity          = oFC.Entity.Name;
+                InputCurrency   = oFC.InputCurrency.Name;
+                InputSite       = oFC.InputRecipient.Name;
+                PublicationSite = oFC.PublishingRecipient.Name;
+                PackPackage.ReadFrom(roObject, roContext);
+                PackRestriction.ReadFrom(roObject, roContext);
+                PackOperation.ReadFrom(roObject, roContext);
             }
         }
 
-        // TODO
-        public override void WriteInto(ICtObject roObject, MessageList roMess, Context roContext)
+        public void WriteInto(ICtObject roObject, MessageList roMess, Context roContext, Framework voFramework)
         {
-            base.WriteInto(roObject, roMess, roContext);
+            ICtEntityReporting oFC = (ICtEntityReporting)roObject;
+            oFC.Entity = roContext.GetRefValue(Dims.Entity, Entity).FCValue();
+            oFC.InputCurrency = roContext.GetRefValue(Dims.Currency, InputCurrency).FCValue();
+            oFC.InputRecipient = roContext.Get<Recipient>(InputSite).FCValue();
+            oFC.PublishingRecipient = roContext.Get<Recipient>(PublicationSite).FCValue();
+            PackPackage.WriteInto(roObject, roMess, roContext, voFramework);
+            PackRestriction.WriteInto(roObject, roMess, roContext);
+            PackOperation.WriteInto(roObject, roMess, roContext);
 
-            // Not used
-            // _oLog.Debug($"Writen  {this.GetType().Name} {Name}");
-        }
-
-        //TODO
-        public override bool IsValid(Context roContext, MessageList roMess)
-        {
-            return base.IsValid(roContext, roMess);
+            _oLog.Debug($"Writen  {this.GetType().Name} {Name}");
         }
     }
 
@@ -407,27 +420,26 @@ namespace CTSWeb.Models
             // No need from the base, no ID nor name
             //base.ReadFrom(roObject, roContext);
 
-            ICtReporting oFC = (ICtReporting)roObject;
-            UseDefaultWindowsFolder = (0 != oFC.PropVal[-514174]);
-            WindowsFolder = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_WINDOWS_INPUT_FOLDER]?.Name;
-            UseDefaultInternetFolder = (0 != oFC.PropVal[-514173]);
-            InternetFolder = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_INTERNET_INPUT_FOLDER]?.Name;
-            UseDefaultSetOfControls = (0 != oFC.PropVal[-514172]);
-            SetOfControls = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CONTROL_SET]?.Name;
-            UseDefaultLevel = (0 != oFC.PropVal[-514170]);
-            LevelToReach = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CONTROL_LEVEL]?.Rank;
-            Blocking = (0 != oFC.PropVal[-514187]);
-            UseDefaultLock = (0 != oFC.PropVal[-514171]);
-            LockOnPublication = oFC.PropVal[-514188];
-            UseDefaultRuleSet = (0 != oFC.PropVal[-514169]);        // ToDo check
-            RuleSet = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_RULE_SET]?.Name;
-            UseDefaultOpbal = (0 != oFC.PropVal[-514168]);
-            HasOpBal = (0 != oFC.PropVal[-514186]);
-            OpbPhase = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_PHASE]?.Name;
-            OpbUpdatePeriod = roContext.GetRefValue(Dims.UpdPer, oFC.PropVal[-514175])?.Name;
-            OpbScope = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_SCOPE_CODE]?.Name;
-            OpbVariant = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_VERSION]?.Name;
-            OpbConsCurrency = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_CONSOLIDATION_CURRENCY]?.Name;
+            UseDefaultWindowsFolder  = (0 != (sbyte)roObject.PropVal[-514174]);
+            WindowsFolder            = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_WINDOWS_INPUT_FOLDER]))?.Name;
+            UseDefaultInternetFolder = (0 != (sbyte)roObject.PropVal[-514173]);
+            InternetFolder           = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_INTERNET_INPUT_FOLDER]))?.Name;
+            UseDefaultSetOfControls  = (0 != (sbyte)roObject.PropVal[-514172]);
+            SetOfControls            = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CONTROL_SET]))?.Name;
+            UseDefaultLevel          = (0 != (sbyte)roObject.PropVal[-514170]);
+            LevelToReach             = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CONTROL_LEVEL]))?.Rank;
+            Blocking                 = (0 != (sbyte)roObject.PropVal[-514187]);
+            UseDefaultLock           = (0 != (sbyte)roObject.PropVal[-514171]);
+            LockOnPublication        = (int)roObject.PropVal[-514188];
+            UseDefaultRuleSet        = (0 != (sbyte)roObject.PropVal[-514169]);        // ToDo check the set rule default
+            RuleSet                  = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_RULE_SET]))?.Name;
+            UseDefaultOpbal          = (0 != (sbyte)roObject.PropVal[-514168]);
+            HasOpBal                 = (0 != (sbyte)roObject.PropVal[-514186]);
+            OpbPhase                 = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_PHASE]))?.Name;
+            OpbUpdatePeriod          = roContext.GetRefValue(Dims.UpdPer, (int)roObject.PropVal[-514175])?.Name;
+            OpbScope                 = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_SCOPE_CODE]))?.Name;
+            OpbVariant               = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_VERSION]))?.Name;
+            OpbConsCurrency          = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_CONSOLIDATION_CURRENCY]))?.Name;
         }
 
         public void WriteInto(ICtObject roObject, MessageList roMess, Context roContext, Framework voFramework)
@@ -455,7 +467,8 @@ namespace CTSWeb.Models
             if (!UseDefaultLock) oFC.PropVal[-514188] = (LockOnPublication == 2 ? 2 :(LockOnPublication == 1 ? 1 : 0));
 
             oFC.PropVal[-514169] = (sbyte)(UseDefaultRuleSet ? 1 : 0);
-            // RuleSet = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_RULE_SET]?.Name; // ToDo Che    
+            // ToDo set the ruleset
+            // RuleSet = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_RULE_SET]?.Name;  
 
             oFC.PropVal[-514168] = (sbyte)(UseDefaultOpbal ? 1 : 0);
             if (!UseDefaultOpbal)
@@ -466,14 +479,58 @@ namespace CTSWeb.Models
                 oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_SCOPE_CODE] = roContext.GetRefValue(Dims.Scope, OpbScope).FCValue();
                 oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_VERSION] = roContext.GetRefValue(Dims.Variant, OpbVariant).FCValue();
                 oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_OP_BAL_CONSOLIDATION_CURRENCY] = roContext.GetRefValue(Dims.Currency, OpbConsCurrency).FCValue();
+                // TODO: Trigger on ct_reporting to update ct_reporting_period_trans
+                // Maybe search the dll for table name to see a closeby function
             }
         }
     }
 
 
 
-    public class Restriction
+    public class Restriction : ManagedObject
     {
+        public static bool _bDontSaveName = true;
+
+        static Restriction()
+        {
+            // No manager, read from reporting
+            //Manager.Register<ReportingLight>((int)CtReportingManagers.CT_REPORTING_MANAGER, (int)LanguageMasks.LongDesc); // TranslatableField.None
+        }
+
+        // Argument-less constructor
+        public Restriction() { }
+
+        // Fields
+        //bool UseDefaultReadOnlyFlows = true;
+        //bool IsROFlowsFilter = false;
+        //List<string> ROFlows = new List<string>();
+        //string ROFlowsFilter;
+
+        //bool UseDefaultOnlyIfOPBal = true;
+        //bool IsLockOnlyIfOPBal;
+
+        //bool UseDefaultReadOnlyPeriods = true;
+        //bool IsROPeriodsFilter = false;
+        //List<string> ROPeriods = new List<string>();
+        //string ROPeriodsFilter;
+
+        //bool UseDefaultRestriction = true;
+        //string RestrictionName;
+
+        //bool UseDefaultROTechOrig = true;
+        //bool IsIntercoRO;
+
+        public override void ReadFrom(ICtObject roObject, Context roContext)
+        {
+            // TODO: read something rather than use defaults
+        }
+
+        public override void WriteInto(ICtObject roObject, MessageList roMess, Context roContext)
+        {
+            //base.WriteInto(roObject, roMess, roContext);
+
+            // TODO: Save. Uses defaults if nothing is saved.
+        }
     }
 
 
@@ -511,9 +568,14 @@ namespace CTSWeb.Models
             public IntegrateMode(int viFlag) { SetFlag(viFlag); }
         }
 
+        public bool UseDefaultPublish = true;
         public DateTime PackPublishingCutOffDate;
         public bool AllowEarlyPublishing;
+
+        public bool UseDefaultAfterPub = true;
         public IntegrateMode AfterPublication = new IntegrateMode();
+
+        public bool UseDefaultAfterTran = true;
         public IntegrateMode AfterTransfer = new IntegrateMode();
 
 
@@ -522,16 +584,33 @@ namespace CTSWeb.Models
             // No need from the base, no ID nor name
             //base.ReadFrom(roObject, roContext);
 
+            // Need this because the flags are not present in Reporting, only in EntityReporting
+            bool IsFCPropTrue(ICtObject roFC, CtReportingProperties viPropID)
+            {
+                sbyte? i = (sbyte?)roFC.PropVal[(int)viPropID];
+                return (i is null) ? false : i != 0;
+            }
+
             if (!(roObject is null))
             {
-                ICtReporting oFC = (ICtReporting)roObject;
-
-                PackPublishingCutOffDate = oFC.PropVal[(int)CtReportingProperties.CT_PROP_PACK_PUBLISHING_CUTOFF_DATE];
-                AllowEarlyPublishing = (0 != oFC.PropVal[(int)CtReportingProperties.CT_PROP_ALLOW_EARLY_PUBLISHING]);
-                AfterPublication.SetFlag(oFC.PropVal[(int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_PUB]);
-                AfterPublication.Level = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_PUB]?.Rank;
-                AfterTransfer.SetFlag(oFC.PropVal[(int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_TRANSFER]);
-                AfterTransfer.Level = oFC.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_TRANSFER]?.Rank;
+                UseDefaultPublish = IsFCPropTrue(roObject, CtReportingProperties.CT_PROP_USE_DEFAULT_PUBLISHING_PROPS);
+                if (!UseDefaultPublish)
+                {
+                    PackPublishingCutOffDate = (DateTime)roObject.PropVal[(int)CtReportingProperties.CT_PROP_PACK_PUBLISHING_CUTOFF_DATE];
+                    AllowEarlyPublishing = (0 != (sbyte)roObject.PropVal[(int)CtReportingProperties.CT_PROP_ALLOW_EARLY_PUBLISHING]);
+                }
+                UseDefaultAfterPub = IsFCPropTrue(roObject, CtReportingProperties.CT_PROP_USE_DEFAULT_INTEGRATION_PROPS);
+                if (!UseDefaultAfterPub)
+                {
+                    AfterPublication.SetFlag((int)roObject.PropVal[(int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_PUB]);
+                    AfterPublication.Level = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_PUB]))?.Rank;
+                }
+                UseDefaultAfterTran = IsFCPropTrue(roObject, CtReportingProperties.CT_PROP_USE_DEFAULT_DELIVERY_PROPS);
+                if (!UseDefaultAfterTran)
+                {
+                    AfterTransfer.SetFlag((int)roObject.PropVal[(int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_TRANSFER]);
+                    AfterTransfer.Level = ((dynamic)(roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_TRANSFER]))?.Rank;
+                }
             }
         }
 
@@ -539,12 +618,28 @@ namespace CTSWeb.Models
         public void WriteInto(ICtObject roObject, MessageList roMess, Context roContext, Framework voFramework)
         {
             // No need from the base, no ID nor name
-            roObject.PropVal[(int)CtReportingProperties.CT_PROP_PACK_PUBLISHING_CUTOFF_DATE] = PackPublishingCutOffDate;
-            roObject.PropVal[(int)CtReportingProperties.CT_PROP_ALLOW_EARLY_PUBLISHING] = (sbyte)(AllowEarlyPublishing ? 1 : 0);
-            roObject.PropVal[(int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_PUB] = AfterPublication.GetFlag();
-            roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_PUB] = voFramework.GetControlLevel(AfterPublication.Level)?.FCValue();
-            roObject.PropVal[(int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_TRANSFER] = AfterTransfer.GetFlag();
-            roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_TRANSFER] = voFramework.GetControlLevel(AfterTransfer.Level)?.FCValue();
+
+            void SetFCBool(ICtObject roFC, CtReportingProperties viPropID, bool vbValue) {roFC.PropVal[(int)viPropID] = (sbyte)(vbValue ? 1 : 0);}
+
+
+            SetFCBool(roObject, CtReportingProperties.CT_PROP_USE_DEFAULT_PUBLISHING_PROPS, UseDefaultPublish);
+            if (!UseDefaultPublish)
+            {
+                roObject.PropVal[(int)CtReportingProperties.CT_PROP_PACK_PUBLISHING_CUTOFF_DATE] = PackPublishingCutOffDate;
+                roObject.PropVal[(int)CtReportingProperties.CT_PROP_ALLOW_EARLY_PUBLISHING] = (sbyte)(AllowEarlyPublishing ? 1 : 0);
+            }
+            SetFCBool(roObject, CtReportingProperties.CT_PROP_USE_DEFAULT_INTEGRATION_PROPS, UseDefaultAfterPub);
+            if (!UseDefaultAfterPub)
+            {
+                roObject.PropVal[(int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_PUB] = AfterPublication.GetFlag();
+                roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_PUB] = voFramework.GetControlLevel(AfterPublication.Level)?.FCValue();
+            }
+            SetFCBool(roObject, CtReportingProperties.CT_PROP_USE_DEFAULT_DELIVERY_PROPS, UseDefaultAfterTran);
+            if (!UseDefaultAfterTran)
+            {
+                roObject.PropVal[(int)CtReportingProperties.CT_PROP_INTEGRATE_AFTER_TRANSFER] = AfterTransfer.GetFlag();
+                roObject.RelVal[(int)CtReportingRelationships.CT_REL_REPORTING_CTRL_LEVEL_REACHED_TRANSFER] = voFramework.GetControlLevel(AfterTransfer.Level)?.FCValue();
+            }
         }
     }
 

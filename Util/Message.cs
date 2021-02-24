@@ -42,7 +42,7 @@ namespace CTSWeb.Util
     //          $[{0}] where 0 = typeof(ReportingLight) would return Reporting.
     //          $[lower:{0}] where 0 = typeof(ReportingLight) would return reporting.
     //          $[lower:AU] would return audit id in english, and nature in french (MessageList needs a list of dimensions for one datasource)
-    // TODO: trnsform the initialization code into a fair data structure in the static constructor (see Manager)
+    // TODO: transform the message initialization code into a fair data structure in the static constructor (see Manager)
     public static class MessageSetup
     {
         public static readonly List<(string, MessageSeverity, ((string, string, string), (string, string, string)))> Setup = new List<(string, MessageSeverity, ((string, string, string), (string, string, string)))>()
@@ -112,6 +112,12 @@ namespace CTSWeb.Util
             ),
            ("RF0514",MessageSeverity.Error, ( ("en-US", "In the automatic integration after transfer, a control level must be specified if and only if the advanced publication mode is selected", "Please correct the operation"),
                                               ("fr-FR", "Dans l'intégration automatique après pilotage, un niveau de contrôle doit être spécifié si et seulementsi le mode Avancé est choisi", "Corrigez les paramètres d'exploitation") )
+            ),
+           ("RF0515",MessageSeverity.Error, ( ("en-US", "Entity {0}: In the automatic integration after pubication, a control level must be specified if and only if the advanced publication mode is selected", "Please correct the operation"),
+                                              ("fr-FR", "Enité {0}: Dans l'intégration automatique après publicaton, un niveau de contrôle doit être spécifié si et seulementsi le mode Avancé est choisi", "Corrigez les paramètres d'exploitation") )
+            ),
+           ("RF0516",MessageSeverity.Error, ( ("en-US", "Entity {0}: In the automatic integration after transfer, a control level must be specified if and only if the advanced publication mode is selected", "Please correct the operation"),
+                                              ("fr-FR", "Enité {0}: Dans l'intégration automatique après pilotage, un niveau de contrôle doit être spécifié si et seulementsi le mode Avancé est choisi", "Corrigez les paramètres d'exploitation") )
             ),
 
         };
