@@ -62,6 +62,10 @@ namespace CTSWeb.Util
            ("RF0212",MessageSeverity.Error, ( ("en-US", "Invalid value '{0}' in column '{1}'", "Correct the entry"),
                                               ("fr-FR", "Valeur incorrecte '{0}' dans la colonne '{1}'", "Corrigez la valeur") )
             ),
+           ("RF0213",MessageSeverity.Error, ( ("en-US", "Code '{1}' not found in dimension {0}", ""),
+                                              ("fr-FR", "Code '{1}' inconnu dans la dimension {0}", "") )
+            ),
+
            ("RF0310",MessageSeverity.Info, ( ("en-US", "Changed {0} from '{1}' to '{2}'", ""),
                                               ("fr-FR", "Change {0} de '{1}' à '{2}'", "") )
             ),
@@ -118,6 +122,9 @@ namespace CTSWeb.Util
             ),
            ("RF0516",MessageSeverity.Error, ( ("en-US", "Entity {0}: In the automatic integration after transfer, a control level must be specified if and only if the advanced publication mode is selected", "Please correct the operation"),
                                               ("fr-FR", "Enité {0}: Dans l'intégration automatique après pilotage, un niveau de contrôle doit être spécifié si et seulementsi le mode Avancé est choisi", "Corrigez les paramètres d'exploitation") )
+            ),
+           ("RF0517",MessageSeverity.Error, ( ("en-US", "Entity {0}: site '{1}' not found", "Please choose an existing site"),
+                                              ("fr-FR", "Enité {0}: site '{1}' inconnu", "Choisissez un site existant") )
             ),
 
         };

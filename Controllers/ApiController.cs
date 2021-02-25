@@ -118,7 +118,7 @@ namespace CTSWeb.Controllers
         {
             using (Context oContext = new Context(this.HttpContext))
             {
-                return new CTS_JsonResult(oContext.GetActiveLanguages());
+                return new CTS_JsonResult(oContext.Language.GetActiveLanguages());
             }
         }
         );
@@ -139,6 +139,13 @@ namespace CTSWeb.Controllers
             {
                 return new CTS_JsonResult(oContext.GetAll<RefTable>());
             }
+        }
+        );
+
+
+        public ActionResult TestTable() => PrSafeResult(() =>
+        {
+            return new CTS_JsonResult(Serialiser.CreateTable());
         }
         );
     }

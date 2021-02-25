@@ -20,12 +20,12 @@ namespace CTSWeb.Util
     //
 
 
-    public interface IControl
+    public interface IControl<T>
     {
         TagList<string> Tags        { get; set; }
         int             Tolerance   { get; set; }
         
-        bool Pass(DataSet voData, MessageList roMess, Filter<string> voFilter = null);   // Returns true if no error, false otherwise
+        bool Pass(T voData, MessageList roMess, Filter<string> voFilter = null);   // Returns true if no error, false otherwise
     }
 
 
@@ -55,7 +55,7 @@ namespace CTSWeb.Util
     //}
 
 
-    public class ControlTablesExists : ControlBase, IControl
+    public class ControlTablesExists : ControlBase, IControl<DataSet>
     {
         public List<string> Tables;
 
@@ -72,7 +72,7 @@ namespace CTSWeb.Util
         }
     }
 
-    public class ControlColumnsExist : ControlBase, IControl
+    public class ControlColumnsExist : ControlBase, IControl<DataSet>
     {
         public string TableName;
         public List<string> RequiredColumns = new List<string>();
@@ -100,7 +100,7 @@ namespace CTSWeb.Util
     }
 
 
-    public class ControlValidateColumn : ControlBase, IControl
+    public class ControlValidateColumn : ControlBase, IControl<DataSet>
     {
         public string TableName;
         public string ColName;
@@ -177,4 +177,29 @@ namespace CTSWeb.Util
             return Pass(voData, roMess, null, false);
         }
     }
+
+
+
+    public class ControlInDim : ControlBase, IControl<(Dims, string)>
+    {
+        private readonly Predicate<(Dims, string)> _oValidator;
+
+        public ControlInDim(Predicate<(Dims, string)> voValidator)
+        {
+            _oValidator = voValidator;
+        }
+
+
+        public bool Pass((Dims, string) voData, MessageList roMess, Filter<string> voFilter = null)
+        {
+            bool bRet = true;
+            if (!_oValidator(voData))
+            {
+                bRet = false;
+                roMess.Add("RF0213", voData.Item1, voData.Item2);
+            }
+            return bRet;
+        }
+    }
+
 }

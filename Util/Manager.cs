@@ -78,8 +78,6 @@ namespace CTSWeb.Util
 		// Needs a pair of functions to read from and write to a generic FC object
 		// These will be called both for new and existing objects
 
-		// Duplicating the language in every object may seem wasteful
-		// However, we would otherwise need a pointer to the context, that is equally wasteful
 		private string _sName;
 
 

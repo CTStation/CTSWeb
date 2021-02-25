@@ -100,7 +100,7 @@ namespace CTSWeb.Util
 
         public CTCLIENTSERVERLib.lang_t WorkingLanguage { get => _oLanguage.WorkingLanguage; }
 
-        public List<string> GetActiveLanguages() => _oLanguage.GetActiveLanguages();
+        //public List<string> GetActiveLanguages() => _oLanguage.GetActiveLanguages();
 
         public ConfigClass Config { get => _oConfig; }
 

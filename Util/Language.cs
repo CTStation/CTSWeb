@@ -29,16 +29,16 @@ namespace CTSWeb.Util
     {
         public enum Type
         {
-            Short = 0,
-            Long = 1,
-            XL = 2,
+            SDesc = 0,
+            LDesc = 1,
+            XDesc = 2,
             Comment = 3
         }
 
         public static (LanguageMasks, LanguageText.Type, string, ct_desctype)[] TypeInfo = new (LanguageMasks, LanguageText.Type, string, ct_desctype)[4] {
-            (LanguageMasks.ShortDesc,   LanguageText.Type.Short,    "SDesc", ct_desctype.ctdesc_short),
-            (LanguageMasks.LongDesc,    LanguageText.Type.Long,     "LDesc", ct_desctype.ctdesc_long),
-            (LanguageMasks.XDesc,       LanguageText.Type.XL,       "XDesc", ct_desctype.ctdesc_extralong),
+            (LanguageMasks.ShortDesc,   LanguageText.Type.SDesc,    "SDesc", ct_desctype.ctdesc_short),
+            (LanguageMasks.LongDesc,    LanguageText.Type.LDesc,    "LDesc", ct_desctype.ctdesc_long),
+            (LanguageMasks.XDesc,       LanguageText.Type.XDesc,    "XDesc", ct_desctype.ctdesc_extralong),
             (LanguageMasks.Comment,     LanguageText.Type.Comment,  "Comment", ct_desctype.ctdesc_comment)
         };
 
@@ -185,7 +185,7 @@ namespace CTSWeb.Util
                 bISOFound = false;
                 foreach (lang_t iLang in _aiIndex2LangIds)
                 {
-                    sLangDesc = Description((ICtLanguage)oLang, LanguageText.Type.Long, iLang);
+                    sLangDesc = Description((ICtLanguage)oLang, LanguageText.Type.LDesc, iLang);
                     _asDescs[c, j] = sLangDesc;
                     // If the same description is used on multiple rows, keep the first and silently ignore the others
                     if (bActive && !bISOFound && _oDesc2ISO.TryGetValue(sLangDesc, out sLangISO) && !_oISO2Lang.ContainsKey(sLangISO))
@@ -221,12 +221,12 @@ namespace CTSWeb.Util
             int iLangOffset = PrLang2Index(viLang);
             switch (viType)
             {
-                case LanguageText.Type.Short:
+                case LanguageText.Type.SDesc:
                     break;
-                case LanguageText.Type.Long:
+                case LanguageText.Type.LDesc:
                     iLangOffset += cLang;
                     break;
-                case LanguageText.Type.XL:
+                case LanguageText.Type.XDesc:
                     iLangOffset += 2 * cLang;
                     break;
                 case LanguageText.Type.Comment:
