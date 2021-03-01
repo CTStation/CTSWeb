@@ -196,7 +196,7 @@ namespace CTSWeb.Models
                 {
                     s = GetDesc(o.Item2, LanguageText.Type.LDesc);
                     if ((s is null) && (String.IsNullOrEmpty(Language.Description(roObject, LanguageText.Type.LDesc, o.Item1))))
-                        SetDesc(o.Item2, LanguageText.Type.LDesc, oPhase.GetDesc(o.Item2, LanguageText.Type.LDesc) + " - " + UpdatePeriod);
+                        SetDesc(o.Item2, LanguageText.Type.LDesc, oPhase.GetDesc(o.Item2, LanguageText.Type.LDesc) + " - " + UpdatePeriod, roContext.Language);
                 }
             }
 
@@ -220,14 +220,29 @@ namespace CTSWeb.Models
             DefaultRestriction.WriteInto(oFC, roMess, roContext);
             DefaultOperation.WriteInto(oFC, roMess, roContext, Framework);
 
+            ICtObjectManager oManager = null;
+            ICtProviderContainer oContainer = null;
+            ICtEntityReporting oEntityRep = null;
+
+
+            Manager.COMMonitor(roContext, () => { oContainer = (ICtProviderContainer)roContext.Config.Session; oManager = (ICtObjectManager)oContainer.get_Provider(1, -523587); });
             foreach (EntityReporting o in EntityReportings.Values)
             {
-                o.WriteInto(oFC, roMess, roContext, Framework);
+                Manager.COMMonitor(roContext, () =>
+                {
+                    oEntityRep = (ICtEntityReporting)oFC.RelatedEntityReportingCollection?.FindItem(roContext.GetRefValue(Dims.Entity, o.Entity).ID);
+                    if (oEntityRep is null)
+                    {
+                        oEntityRep = (ICtEntityReporting)oManager.NewObject();
+                        oEntityRep.Reporting = oFC;
+                        o.WriteInto(oEntityRep, roMess, roContext, Framework);
+                        oManager.SaveObject(oEntityRep);
+                    }
+                });
             }
 
             _oLog.Debug($"Writen {this.GetType().Name} {Phase} - {UpdatePeriod}");
         }
-
 
 
         public override bool IsValid(Context roContext, MessageList roMess)
@@ -274,6 +289,7 @@ namespace CTSWeb.Models
                     }
                     else
                     {
+                        oFullRep.Name = oFullRep.Phase + " - " + oFullRep.UpdatePeriod;
                         oRet.Add(oFullRep);
                     }
                 }

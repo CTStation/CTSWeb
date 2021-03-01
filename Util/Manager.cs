@@ -50,7 +50,7 @@ namespace CTSWeb.Util
 	{
 		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-
+		// TODO: create the flags in the static constructor
 		private static readonly HashSet<char> _oAllowedCharsInNames = new HashSet<char>("ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-".ToCharArray());
 
 		private static bool PrIsValidName(string vsName, MessageList roMess)
@@ -192,7 +192,6 @@ namespace CTSWeb.Util
 
 		public string GetDesc(string vsCulture, LanguageText.Type viType)
 		{
-			bool bNotFound = true;
 			string sRet = null;
 			string sCode = LanguageText.GetCode(viType);
 
@@ -200,16 +199,13 @@ namespace CTSWeb.Util
 			{
 				if (o.CultureName == vsCulture) {
 					if (o.Texts.ContainsKey(sCode)) sRet = o.Texts[sCode];
-					bNotFound = false;
 					break;
 				}
 			}
-			if (bNotFound) throw new KeyNotFoundException($"Unsupported language '{vsCulture}'");
 			return sRet;
 		}
 
-
-		public void SetDesc(string vsCulture, LanguageText.Type viType, string vsValue)
+		public void SetDesc(string vsCulture, LanguageText.Type viType, string vsValue, Language voLang)
 		{
 			bool bNotFound = true;
 			string sCode = LanguageText.GetCode(viType);
@@ -222,7 +218,14 @@ namespace CTSWeb.Util
 					break;
 				}
 			}
-			if (bNotFound) throw new KeyNotFoundException($"Unsupported language '{vsCulture}'");
+			if (bNotFound)
+            {
+				List<LanguageText> oDesc = new List<LanguageText>(Descriptions);
+				LanguageText oText = new LanguageText(vsCulture, voLang);
+				oText.Texts[sCode] = vsValue;
+				oDesc.Add(oText);
+				Descriptions = oDesc.ToArray();
+            }
 		}
 
 
@@ -457,12 +460,14 @@ namespace CTSWeb.Util
 				ICtOqlBooleanExpr oOql = oqlFactory.Equal(oqlFactory.Prop((int)ct_object_property.CT_NAME_PROP), oqlFactory.Value(vsName));
 				ICtGenCollection oCollection = null;
 				try {
-					oCollection = oManager.GetObjects(oOql, viFlags, 0, null);
+					oCollection = oManager.GetObjects(oOql, viFlags, (int)ALL_CAT.MANDATORY, null);
 				} catch (System.Runtime.InteropServices.COMException e) {
 					_oLog.Debug($"Object '{vsName}' not found: {e}");
 				}
 				if (vbRaiseErrorIfNotFound && (oCollection is null)) throw new KeyNotFoundException($"No object of type { oType.Name } found with name '{vsName}'");
 				oRet = (oCollection is null) ? null : (ICtObject)oCollection.GetAt(1);
+				// Bug found on Recipient: the search finds the right object, but returns an exception
+				if (!(oRet is null)) oRet = (ICtObject)oManager.GetObject(oRet.ID, viFlags, (int)ALL_CAT.ALL);
 			});
 			if (vbRaiseErrorIfNotFound && oRet is null) throw new ArgumentNullException($"Object of type { oType.Name } found with name '{vsName}' is null");
 			return oRet;

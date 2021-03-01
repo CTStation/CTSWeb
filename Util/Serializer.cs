@@ -236,7 +236,7 @@ namespace CTSWeb.Util
             Dictionary<string, Reporting> oCur = new Dictionary<string, Reporting>();
             string PrBuildKey(string vsPhase, string vsUpdPer) => vsPhase + "\t" + vsUpdPer;
 
-            object PrNoException(DataRow voRow, string vsColName) => (voTable.Columns.Contains(vsColName)) ? voRow[vsColName] : null;
+            object PrNoException(DataRow voRow, string vsColName) => (voTable.Columns.Contains(vsColName) && (!(voRow[vsColName] is DBNull))) ? voRow[vsColName] : null;
 
             int c = 0;
             string sKey;

@@ -104,10 +104,10 @@ namespace CTSWeb.Controllers
                 MessageList oMessages = oContext.NewMessageList();
 
                 List<Reporting> oReportings = Models.Reporting.LoadFromDataSet(oSet, oContext, oMessages);
-                //foreach (Reporting oObj in oReportings)
-                //{
-                //    oContext.Save<Reporting>(oObj, oMessages);
-                //}
+                foreach (Reporting oObj in oReportings)
+                {
+                    oContext.Save<Reporting>(oObj, oMessages);
+                }
                 //return new CTS_JsonResult(null, oMessages);
                 return new CTS_JsonResult(oReportings, oMessages);
             }

@@ -16,6 +16,7 @@ using CTCOMMONMODULELib;
 using CTCORELib;
 using CTKREFLib;
 using CTREPORTINGMODULELib;
+using CTTRANSFERLib;
 using System;
 using System.Collections.Specialized;
 using System.Reflection;
@@ -309,6 +310,42 @@ namespace CTSWeb.Models.Tests
                 }
             }
             Debug.WriteLine($"Found {c} non null {sName} for object {voFC.Name}\n");
+        }
+
+
+
+        [TestMethod()]
+        public void GetRecipient()
+        {
+            using (Context oContext = new Context(_oHeaders))
+            {
+                var oContainer = (ICtProviderContainer)oContext.Config.Session;
+                var oRecepManager = (ICtObjectManager)oContainer.get_Provider(1, -524253);
+                ICtRecipient oFC = (ICtRecipient)oRecepManager.GetObject(3, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL);
+
+
+
+                Assert.IsNotNull(oFC);
+
+                ICtReporting oRep = ((ICtReportingManager)oContainer.get_Provider(1, (int)CtReportingManagers.CT_REPORTING_MANAGER)).Reporting
+                    [oContext.GetRefValue(Dims.Phase, "A").FCValue(), oContext.GetRefValue(Dims.UpdPer, "2001.12").FCValue()];
+
+                ICtObjectManager oManager = null;
+                ICtEntityReporting oEntityRep = null;
+
+
+                oManager = (ICtObjectManager)oContainer.get_Provider(1, -523587); 
+
+                oEntityRep = (ICtEntityReporting)oManager.NewObject();
+                oEntityRep.Reporting = oRep;
+                oEntityRep.Entity = oContext.GetRefValue(Dims.Entity, "S002").FCValue();
+                oEntityRep.InputRecipient = oFC;
+                oEntityRep.PublishingRecipient = oFC;
+                oManager.SaveObject(oEntityRep);
+
+
+
+            }
         }
     }
 }
