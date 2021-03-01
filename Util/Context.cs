@@ -14,6 +14,7 @@ using System.Globalization;
 using System.Web;
 using System.Threading;
 using log4net;
+using CTCLIENTSERVERLib;
 
 namespace CTSWeb.Util
 {
@@ -177,6 +178,8 @@ namespace CTSWeb.Util
         public bool TryGet<tObject>(string vsID1, string vsID2, out tObject ro)     where tObject : ManagedObject, new() => Manager.TryGet<tObject>(this, vsID1, vsID2, out ro);
 
         public void Save<tObject>(tObject voObj, MessageList roMess)                where tObject : ManagedObject, new() => Manager.Save<tObject>(this, voObj, roMess);
+
+        public void Execute<tObject>(Action<ICtObjectManager> voAction)             where tObject : ManagedObject, new() => Manager.Execute<tObject>(this, voAction);
 
 
         // Cache for RetTable values

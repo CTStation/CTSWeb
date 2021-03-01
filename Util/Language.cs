@@ -15,66 +15,47 @@ using CTCLIENTSERVERLib;
 
 namespace CTSWeb.Util
 {
-    public enum LanguageMasks
+    public class Descs
     {
-        ShortDesc = 1,
-        LongDesc = 2,
-        XDesc = 4,
-        Comment = 8,
-        All = 15,
-        None = 0
-    }
-
-    public class LanguageText
-    {
-        public enum Type
+        public enum Field
         {
-            SDesc = 0,
-            LDesc = 1,
-            XDesc = 2,
-            Comment = 3
+            SDesc = 1,
+            LDesc = 2,
+            XDesc = 4,
+            Comment = 8,
+            All = 15,
+            None = 0
         }
 
-        public static (LanguageMasks, LanguageText.Type, string, ct_desctype)[] TypeInfo = new (LanguageMasks, LanguageText.Type, string, ct_desctype)[4] {
-            (LanguageMasks.ShortDesc,   LanguageText.Type.SDesc,    "SDesc", ct_desctype.ctdesc_short),
-            (LanguageMasks.LongDesc,    LanguageText.Type.LDesc,    "LDesc", ct_desctype.ctdesc_long),
-            (LanguageMasks.XDesc,       LanguageText.Type.XDesc,    "XDesc", ct_desctype.ctdesc_extralong),
-            (LanguageMasks.Comment,     LanguageText.Type.Comment,  "Comment", ct_desctype.ctdesc_comment)
-        };
-
-        public static string GetCode(Type viType)
+        public static string GetCode(Field viField)
         {
-            string sRet = null;
-
-            foreach (var o in TypeInfo)
-            {
-                if (o.Item2 == viType)
-                {
-                    sRet = o.Item3;
-                    break;
-                }
-            }
-            if (sRet is null) throw new KeyNotFoundException($"Unknown type '{viType}'");
+            string sRet = Enum.GetName(typeof(Field), viField);
+            if (sRet is null) throw new KeyNotFoundException($"Unknown field '{viField}'");
             return sRet;
         }
 
-        public string CultureName { get; } // ISO culture code describes the language in a portable way. Never null. Linked to FC user languages
-        public Dictionary<string, string> Texts;
+        public static (Field, string, ct_desctype)[] FieldList = new (Descs.Field, string, ct_desctype)[4] {
+            (Field.SDesc,   GetCode(Field.SDesc), ct_desctype.ctdesc_short),
+            (Field.LDesc,   GetCode(Field.LDesc), ct_desctype.ctdesc_long),
+            (Field.XDesc,   GetCode(Field.XDesc), ct_desctype.ctdesc_extralong),
+            (Field.Comment, GetCode(Field.Comment), ct_desctype.ctdesc_comment)
+        };
 
-        public LanguageText(lang_t viLang, Language voLang)
+        public readonly string CultureName;     // ISO culture code describes the language in a portable way. Never null. Linked to FC user languages
+        public readonly Dictionary<string, string> Texts = new Dictionary<string, string>();
+
+        public Descs(lang_t viLang, Language voLang)
         {
             string s;
             if (!voLang.TryGetISO(viLang, out s)) throw new KeyNotFoundException($"Language {viLang} has no associated culture");
             CultureName = s;
-            Texts = new Dictionary<string, string>();
         }
 
-        public LanguageText(string vsCultureName, Language voLang)
+        public Descs(string vsCultureName, Language voLang)
         {
             if (vsCultureName == null) throw new ArgumentNullException("Culture name");
             if (!voLang.TryGetLanguageID(vsCultureName, out lang_t iLang)) throw new KeyNotFoundException($"No language has the {vsCultureName} culture");
             CultureName = vsCultureName;
-            Texts = new Dictionary<string, string>();
         }
     }
 
@@ -185,7 +166,7 @@ namespace CTSWeb.Util
                 bISOFound = false;
                 foreach (lang_t iLang in _aiIndex2LangIds)
                 {
-                    sLangDesc = Description((ICtLanguage)oLang, LanguageText.Type.LDesc, iLang);
+                    sLangDesc = GetFCDesc((ICtLanguage)oLang, Descs.Field.LDesc, iLang);
                     _asDescs[c, j] = sLangDesc;
                     // If the same description is used on multiple rows, keep the first and silently ignore the others
                     if (bActive && !bISOFound && _oDesc2ISO.TryGetValue(sLangDesc, out sLangISO) && !_oISO2Lang.ContainsKey(sLangISO))
@@ -214,35 +195,35 @@ namespace CTSWeb.Util
 
         // Desc[ct_desctype, lang_t] crashes when returning a null value in a multi thread setting. Use Prop instead
 
-        private static int PrDescProp(LanguageText.Type viType, lang_t viLang)
+        private static int PrDescProp(Descs.Field viField, lang_t viLang)
         {
             const int cLang = 6;
 
             int iLangOffset = PrLang2Index(viLang);
-            switch (viType)
+            switch (viField)
             {
-                case LanguageText.Type.SDesc:
+                case Descs.Field.SDesc:
                     break;
-                case LanguageText.Type.LDesc:
+                case Descs.Field.LDesc:
                     iLangOffset += cLang;
                     break;
-                case LanguageText.Type.XDesc:
+                case Descs.Field.XDesc:
                     iLangOffset += 2 * cLang;
                     break;
-                case LanguageText.Type.Comment:
+                case Descs.Field.Comment:
                     iLangOffset += 3 * cLang;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown description type {viType}");
+                    throw new ArgumentOutOfRangeException($"Unknown description type {viField}");
             }
             return _aiDescProps[iLangOffset];
         }
 
-        public static string Description(ICtObjectBase roFCObj, LanguageText.Type viType, lang_t viLang) => (string)(roFCObj?.PropVal[PrDescProp(viType, viLang)]);
+        public static string GetFCDesc(ICtObjectBase roFCObj, Descs.Field viField, lang_t viLang) => (string)(roFCObj?.PropVal[PrDescProp(viField, viLang)]);
 
-        public static void SetDesc(ICtObjectBase roFCObj, LanguageText.Type viType, lang_t viLang, string vsVal)
+        public static void SetFCDesc(ICtObjectBase roFCObj, Descs.Field viField, lang_t viLang, string vsVal)
         { 
-            if (!(roFCObj is null)) roFCObj.PropVal[PrDescProp(viType, viLang)] = (vsVal is null) ? "" : vsVal; 
+            if (!(roFCObj is null)) roFCObj.PropVal[PrDescProp(viField, viLang)] = (vsVal is null) ? "" : vsVal; 
         }
 
 

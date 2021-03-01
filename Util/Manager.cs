@@ -50,7 +50,8 @@ namespace CTSWeb.Util
 	{
 		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-		// TODO: create the flags in the static constructor
+		private protected static bool _bSaveName = true;
+
 		private static readonly HashSet<char> _oAllowedCharsInNames = new HashSet<char>("ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-".ToCharArray());
 
 		private static bool PrIsValidName(string vsName, MessageList roMess)
@@ -78,7 +79,7 @@ namespace CTSWeb.Util
 		// Needs a pair of functions to read from and write to a generic FC object
 		// These will be called both for new and existing objects
 
-		private string _sName;
+		private string _sName;		// Needed to enforce uppercase names
 
 
 		public int ID;
@@ -102,18 +103,13 @@ namespace CTSWeb.Util
 		{
 			bool bTest = !(roMess is null);
 
-			// Access to generic type static fields is possible only through reflexion
-			Type oType = this.GetType();
-			FieldInfo oField = oType.GetField("_bDontSaveName", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-
 			// Never change object ID 
-			// roObject.ID = ID;
-			if (!(Name is null) && (oField is null))
+			if (_bSaveName && (!(Name is null)))
 			{
 				if (bTest && !(roObject.Name is null) && roObject.Name != Name) roMess.Add("RF0310", "Name", Name, roObject.Name);
 				roObject.Name = Name;
 			}
-			// Will be done with other descriptions roObject.set_Desc(ct_desctype.ctdesc_long, _oLanguage.WorkingLanguage, LDesc);
+			// Changing the desc will be done with other descriptions
 		}
 
 
@@ -145,9 +141,6 @@ namespace CTSWeb.Util
 			bool bRet = false;
 			Type oType = this.GetType();
 
-			// Access to generic type static fields is possible only through reflexion
-			FieldInfo oField = oType.GetField("_bDontSaveName", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-
 			if (ID == 0)            // New object
 			{
 				if (Name is null)
@@ -162,7 +155,7 @@ namespace CTSWeb.Util
 					}
 					else
 					{
-						bRet = !(oField is null) ? true : PrIsValidName(Name, roMess);
+						bRet = (_bSaveName) ? PrIsValidName(Name, roMess) : true;
 					}
 				}
 			}
@@ -171,7 +164,7 @@ namespace CTSWeb.Util
 				bRet = Manager.TryGetFCObject(roContext, ID, oType, out _);           // Name can be different, allow changing the name && oFCObj.Name == Name;
 				if (bRet)
 				{
-					if (oField is null) bRet = PrIsValidName(Name, roMess);             // Overkill if name is not changed
+					if (_bSaveName) bRet = PrIsValidName(Name, roMess);             // Overkill if name is not changed
 				}
 				else
 				{
@@ -183,19 +176,23 @@ namespace CTSWeb.Util
 	}
 
 
+
 	// Set descriptions to empty string to force an empty desc. Null means 'do not change what's already there'
 	public class ManagedObjectWithDesc : ManagedObject
 	{
 		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-		public LanguageText[] Descriptions;
+
+		private static protected Descs.Field _iSupportedTranslatableFields = Descs.Field.All;
+
+		public Descs[] Descriptions;
 
 
-		public string GetDesc(string vsCulture, LanguageText.Type viType)
+		public string GetDesc(string vsCulture, Descs.Field viField)
 		{
 			string sRet = null;
-			string sCode = LanguageText.GetCode(viType);
+			string sCode = Descs.GetCode(viField);
 
-			foreach (LanguageText o in Descriptions)
+			foreach (Descs o in Descriptions)
 			{
 				if (o.CultureName == vsCulture) {
 					if (o.Texts.ContainsKey(sCode)) sRet = o.Texts[sCode];
@@ -205,23 +202,23 @@ namespace CTSWeb.Util
 			return sRet;
 		}
 
-		public void SetDesc(string vsCulture, LanguageText.Type viType, string vsValue, Language voLang)
+		public void SetDesc(string vsCulture, Descs.Field viField, string vsValue, Language voLang)
 		{
-			bool bNotFound = true;
-			string sCode = LanguageText.GetCode(viType);
+			bool bCultureNotFound = true;
+			string sCode = Descs.GetCode(viField);
 
-			foreach (LanguageText o in Descriptions)
+			foreach (Descs o in Descriptions)
 			{
 				if (o.CultureName == vsCulture) {
 					o.Texts[sCode] = vsValue; // Creates or updates
-					bNotFound = false;
+					bCultureNotFound = false;
 					break;
 				}
 			}
-			if (bNotFound)
+			if (bCultureNotFound)
             {
-				List<LanguageText> oDesc = new List<LanguageText>(Descriptions);
-				LanguageText oText = new LanguageText(vsCulture, voLang);
+				List<Descs> oDesc = new List<Descs>(Descriptions);
+				Descs oText = new Descs(vsCulture, voLang);
 				oText.Texts[sCode] = vsValue;
 				oDesc.Add(oText);
 				Descriptions = oDesc.ToArray();
@@ -233,25 +230,23 @@ namespace CTSWeb.Util
 		{
 			base.ReadFrom(roObject, roContext);
 
-			Descriptions = new LanguageText[roContext.Language.SupportedLanguages.Count];
+			Descriptions = new Descs[roContext.Language.SupportedLanguages.Count];
 
-			// Access to generic type static fields is possible only through reflexion
-			Type oType = this.GetType();
-			FieldInfo oField = oType.GetField("_iSupportedTranslatableFields", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-			int iFields = (int)((oField != null) ? oField.GetValue(null) : LanguageMasks.All);
-
-			int c = 0;
 			string s;
+			int c = 0;
 			foreach ((lang_t, string) oLanguage in roContext.Language.SupportedLanguages)
 			{
-				Descriptions[c] = new LanguageText(oLanguage.Item1, roContext.Language);
+				Descriptions[c] = new Descs(oLanguage.Item1, roContext.Language);
 				if (!(roObject is null))
 				{
 					if (Descriptions[c].CultureName != oLanguage.Item2) _oLog.Debug($"Invalid culture name: expected '{Descriptions[c].CultureName}' and found '{oLanguage.Item2}'");
-					foreach (var o in LanguageText.TypeInfo)
+					foreach (var o in Descs.FieldList)
 					{
-						s = Language.Description(roObject, o.Item2, oLanguage.Item1);
-						if (((iFields & (int)o.Item1) != 0) && (!(s is null))) Descriptions[c].Texts[o.Item3] = s;
+						if ( ( ((int)_iSupportedTranslatableFields) & ((int)o.Item1) ) != 0 ) 
+						{
+							s = Language.GetFCDesc(roObject, o.Item1, oLanguage.Item1);
+							if (!(s is null)) Descriptions[c].Texts[o.Item2] = s;
+						}
 					}
 				}
 				c++;
@@ -262,31 +257,27 @@ namespace CTSWeb.Util
 		public override void WriteInto(ICtObject roObject, MessageList roMess, Context roContext)
 		{
 			base.WriteInto(roObject, roMess, roContext);
+
 			bool bTest = !(roMess is null);
 			string sOld;
 			string sNew;
 
-			foreach (LanguageText oText in Descriptions)
+			foreach (Descs oText in Descriptions)
 			{
 				if (roContext.Language.TryGetLanguageID(oText.CultureName, out lang_t iLang))
 				{
-					foreach (var o in LanguageText.TypeInfo)
+					foreach (var o in Descs.FieldList)
 					{
-						if (oText.Texts.ContainsKey(o.Item3))
+						if (oText.Texts.ContainsKey(o.Item2))
 						{
-							sOld = Language.Description(roObject, o.Item2, iLang);
-							sNew = oText.Texts[o.Item3];
-							if (bTest && (!(sNew is null)) && (sOld != sNew)) roMess.Add("RF0310", o.Item3 + ((int)iLang).ToString(), sNew, sOld);
-							if (!(sNew is null)) Language.SetDesc(roObject, o.Item2, iLang, sNew);
+							sOld = Language.GetFCDesc(roObject, o.Item1, iLang);
+							sNew = oText.Texts[o.Item2];
+							if (bTest && (!(sNew is null)) && (sOld != sNew)) roMess.Add("RF0310", o.Item2 + oText.CultureName, sNew, sOld);
+							if (!(sNew is null)) Language.SetFCDesc(roObject, o.Item1, iLang, sNew);
 						}
 					}
 				} // No else: if language isn't found or active, ignore
 			}
-		}
-
-		public override bool IsValid(Context roContext, MessageList roMess)
-		{
-			return base.IsValid(roContext, roMess);
 		}
 	}
 
@@ -331,11 +322,6 @@ namespace CTSWeb.Util
 			//oObj.Author = Author;
 			//oObj.UpdateDate = UpdateDate;
 			//oObj.UpdateAuthor = UpdateAuthor;
-		}
-
-		public override bool IsValid(Context roContext, MessageList roMess)
-		{
-			return base.IsValid(roContext, roMess);
 		}
 	}
 
@@ -508,17 +494,6 @@ namespace CTSWeb.Util
 			_oType2MgrID.Add(oType, viFCManagerID);
 		}
 
-		public static void Register<tObject>(int viFCManagerID, int viSupportedTranslatableFields) where tObject : ManagedObjectWithDesc, new()
-		{
-			Type oType = typeof(tObject);
-
-			Register<tObject>(viFCManagerID);
-			// Access to generic type static fields is possible only through reflexion
-			FieldInfo oField = oType.GetField("_iSupportedTranslatableFields", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-			oField?.SetValue(null, viSupportedTranslatableFields);
-		}
-
-
 
 		public static void RegisterDelegate<tObject>(Func<Context, ICtObjectManager, string, string, ICtObject> voDelegate) where tObject : ManagedObject, new()
 		{
@@ -658,6 +633,15 @@ namespace CTSWeb.Util
 			roFCObj = PrGet<ManagedObject>(roContext, vsID1, vsID2, false, voT);
 			return !(roFCObj is null);
 		}
+
+
+		// Helper function for EntityRep, that needs 3 arguments to find an object
+		// Runs any function against a manager in a protected way
+		public static void Execute<tObject>(Context roContext, Action<ICtObjectManager> voAction) where tObject : ManagedObject, new()
+		{
+			ICtObjectManager o = PrGetMgr<tObject>(roContext);
+			COMMonitor(roContext, () => { voAction(o); } );
+        }
 
 
 

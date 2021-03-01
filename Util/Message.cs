@@ -69,17 +69,17 @@ namespace CTSWeb.Util
            ("RF0310",MessageSeverity.Info, ( ("en-US", "Changed {0} from '{1}' to '{2}'", ""),
                                               ("fr-FR", "Change {0} de '{1}' à '{2}'", "") )
             ),
-           ("RF0311",MessageSeverity.Info, ( ("en-US", "Object of type {0} named {1} is not judged valid by FC", "Please check its parameters"),
+           ("RF0311",MessageSeverity.Error, ( ("en-US", "Object of type {0} named {1} is not judged valid by FC", "Please check its parameters"),
                                               ("fr-FR", "L'objet de type {0} et de code {1} n'est pas considéré comme valide pas FC", "Vérifiez les paramètres") )
             ),
-           ("RF0312",MessageSeverity.Info, ( ("en-US", "Error {0} while saving object {1} of type {2}", ""),
+           ("RF0312",MessageSeverity.Error, ( ("en-US", "Error {0} while saving object {1} of type {2}", ""),
                                               ("fr-FR", "Erreur {0} lors de la sauvegarde de l'objet {1} de type {2}", "") )
             ),
            ("RF0410",MessageSeverity.Error, ( ("en-US", "A new object of type {0} must have a name", "Make sure a name is provided"),
                                               ("fr-FR", "Un nouvel object de type {0} doit avoir un code", "Fournissez un code pour l'objet") )
             ),
            ("RF0411",MessageSeverity.Error, ( ("en-US", "An object of name '{0}' already exists in type {1}", "Choose another name that isn't used by another existing obejct"),
-                                              ("fr-FR", "Un object de code '{0}' et de type {1] existe déjà", "Choisissez un autre nom, qui ne soit pas utilisé par un objet existant") )
+                                              ("fr-FR", "Un object de code '{0}' et de type {1} existe déjà", "Choisissez un autre nom, qui ne soit pas utilisé par un objet existant") )
             ),
            ("RF0412",MessageSeverity.Error, ( ("en-US", "Character '{0}' is not allowed in the name '{1}'", "Change the name to use only letters, digits and -"),
                                               ("fr-FR", "Le caracter '{0}' n'est pas accepté dans le code '{1}'", "Changez le code en utilisant uniquement des lettres, des chiffres ou le -") )
@@ -125,6 +125,9 @@ namespace CTSWeb.Util
             ),
            ("RF0517",MessageSeverity.Error, ( ("en-US", "Entity {0}: site '{1}' not found", "Please choose an existing site"),
                                               ("fr-FR", "Enité {0}: site '{1}' inconnu", "Choisissez un site existant") )
+            ),
+           ("RF0518",MessageSeverity.Error, ( ("en-US", "Entity {0}: no reporting found", ""),
+                                              ("fr-FR", "Enité {0}: reporting inconnu", "") )
             ),
 
         };

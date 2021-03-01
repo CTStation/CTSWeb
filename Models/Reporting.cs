@@ -23,11 +23,14 @@ namespace CTSWeb.Models
     public class ReportingLight : ManagedObjectWithDescAndSecurity // Inherits ID and Name
     {
         // TODO use attribute rather than a full field
-        public static bool _bDontSaveName = true;
 
         static ReportingLight()
         {
-            Manager.Register<ReportingLight>((int)CtReportingManagers.CT_REPORTING_MANAGER, (int)LanguageMasks.LongDesc ); // TranslatableField.None
+            _bSaveName = false;
+            _iSupportedTranslatableFields = Descs.Field.LDesc;
+
+            Manager.Register<ReportingLight>((int)CtReportingManagers.CT_REPORTING_MANAGER);
+
             Manager.RegisterDelegate<ReportingLight>((Context roContext, ICtObjectManager voMgr, string vsID1, string vsID2) => 
                                                         (ICtObject)((ICtReportingManager)voMgr).Reporting[
                                                             roContext.GetRefValue(Dims.Phase, vsID1).FCValue(), 
@@ -38,12 +41,16 @@ namespace CTSWeb.Models
         // Argument-less constructor
         public ReportingLight() { }
 
+        private ICtReporting _oFC;
+        
         public string Phase;
         public string UpdatePeriod;
         public string FrameworkVersion;
 
         public DateTime ReportingStartDate;
         public DateTime ReportingEndDate;
+
+        public ICtReporting FCValue() => _oFC;
 
         public override void ReadFrom(ICtObject roObject, Context roContext)
         {
@@ -52,13 +59,14 @@ namespace CTSWeb.Models
 
             if (!(roObject is null))
             {
-                ICtReporting reporting = (ICtReporting)roObject;
+                ICtReporting oFC = (ICtReporting)roObject;
 
-                Phase = reporting.Phase.Name;
-                UpdatePeriod = reporting.UpdatePeriod.Name;
-                FrameworkVersion = reporting.FrameworkVersion.Name;
-                ReportingStartDate = reporting.ReportingStartDate;
-                ReportingEndDate = reporting.ReportingEndDate;
+                _oFC               = oFC;
+                Phase              = oFC.Phase.Name;
+                UpdatePeriod       = oFC.UpdatePeriod.Name;
+                FrameworkVersion   = oFC.FrameworkVersion.Name;
+                ReportingStartDate = oFC.ReportingStartDate;
+                ReportingEndDate   = oFC.ReportingEndDate;
             }
             else
             {
@@ -121,7 +129,9 @@ namespace CTSWeb.Models
         
         static Reporting() 
         {
-            Manager.Register<Reporting>((int)CtReportingManagers.CT_REPORTING_MANAGER, (int)(LanguageMasks.ShortDesc | LanguageMasks.LongDesc | LanguageMasks.Comment)); // TranslatableField.None
+            _iSupportedTranslatableFields = Descs.Field.SDesc | Descs.Field.LDesc | Descs.Field.Comment;
+
+            Manager.Register<Reporting>((int)CtReportingManagers.CT_REPORTING_MANAGER);
             // Get reporting from phase and updper
             Manager.RegisterDelegate<Reporting>((Context roContext, ICtObjectManager voMgr, string vsID1, string vsID2) =>
                                                         (ICtObject)((ICtReportingManager)voMgr).Reporting[
@@ -145,7 +155,7 @@ namespace CTSWeb.Models
         public Framework Framework;
         public Package DefaultPackage                               = new Package();
         public Restriction DefaultRestriction                       = new Restriction();
-        public Operation DefaultOperation                           = new Operation();
+        public Operation DefaultOperation                           = new Operation(){ UseDefaultPublish = false, UseDefaultAfterPub = false, UseDefaultAfterTran = false };
         public SortedList<string, EntityReporting> EntityReportings = new SortedList<string, EntityReporting>();
 
 
@@ -194,9 +204,9 @@ namespace CTSWeb.Models
                 string s;
                 foreach ((lang_t, string) o in roContext.Language.SupportedLanguages)
                 {
-                    s = GetDesc(o.Item2, LanguageText.Type.LDesc);
-                    if ((s is null) && (String.IsNullOrEmpty(Language.Description(roObject, LanguageText.Type.LDesc, o.Item1))))
-                        SetDesc(o.Item2, LanguageText.Type.LDesc, oPhase.GetDesc(o.Item2, LanguageText.Type.LDesc) + " - " + UpdatePeriod, roContext.Language);
+                    s = GetDesc(o.Item2, Descs.Field.LDesc);
+                    if ((s is null) && (String.IsNullOrEmpty(Language.GetFCDesc(roObject, Descs.Field.LDesc, o.Item1))))
+                        SetDesc(o.Item2, Descs.Field.LDesc, oPhase.GetDesc(o.Item2, Descs.Field.LDesc) + " - " + UpdatePeriod, roContext.Language);
                 }
             }
 
@@ -220,26 +230,7 @@ namespace CTSWeb.Models
             DefaultRestriction.WriteInto(oFC, roMess, roContext);
             DefaultOperation.WriteInto(oFC, roMess, roContext, Framework);
 
-            ICtObjectManager oManager = null;
-            ICtProviderContainer oContainer = null;
-            ICtEntityReporting oEntityRep = null;
-
-
-            Manager.COMMonitor(roContext, () => { oContainer = (ICtProviderContainer)roContext.Config.Session; oManager = (ICtObjectManager)oContainer.get_Provider(1, -523587); });
-            foreach (EntityReporting o in EntityReportings.Values)
-            {
-                Manager.COMMonitor(roContext, () =>
-                {
-                    oEntityRep = (ICtEntityReporting)oFC.RelatedEntityReportingCollection?.FindItem(roContext.GetRefValue(Dims.Entity, o.Entity).ID);
-                    if (oEntityRep is null)
-                    {
-                        oEntityRep = (ICtEntityReporting)oManager.NewObject();
-                        oEntityRep.Reporting = oFC;
-                        o.WriteInto(oEntityRep, roMess, roContext, Framework);
-                        oManager.SaveObject(oEntityRep);
-                    }
-                });
-            }
+            // EntityReporting are not written. They must be treated separately
 
             _oLog.Debug($"Writen {this.GetType().Name} {Phase} - {UpdatePeriod}");
         }
@@ -259,7 +250,7 @@ namespace CTSWeb.Models
 
             foreach (EntityReporting o in EntityReportings.Values) 
             { 
-                if (bRet) bRet = o.IsValid(roContext, roMess, ReportingStartDate, ReportingEndDate); else break; 
+                if (bRet) bRet = o.IsValid(roContext, roMess); else break; 
             }
             return bRet;
         }
@@ -290,6 +281,7 @@ namespace CTSWeb.Models
                     else
                     {
                         oFullRep.Name = oFullRep.Phase + " - " + oFullRep.UpdatePeriod;
+                        foreach (EntityReporting o in oFullRep.EntityReportings.Values) o.Reporting = oFullRep;
                         oRet.Add(oFullRep);
                     }
                 }
@@ -300,10 +292,21 @@ namespace CTSWeb.Models
 
 
 
-    public class EntityReporting
+    public class EntityReporting : ManagedObject
     {
         private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
+        static EntityReporting()
+        {
+            _bSaveName = false;
+
+            Manager.Register<EntityReporting>((int)CtReportingManagers.CT_ENTITY_REPORTING_MANAGER);
+        }
+
+        // Argument-less constructor
+        public EntityReporting() { }
+
+        public ReportingLight Reporting;
         public string Entity;
         public string InputCurrency;
         public string InputSite;
@@ -313,38 +316,47 @@ namespace CTSWeb.Models
         public Restriction PackRestriction = new Restriction();
         public Operation PackOperation = new Operation();
 
-        public void ReadFrom(ICtObject roObject, Context roContext)
+        public override void ReadFrom(ICtObject roObject, Context roContext)
         {
+            base.ReadFrom(roObject, roContext);
+
             if (!(roObject is null))
             {
                 ICtEntityReporting oFC = (ICtEntityReporting)roObject;
 
-                Entity          = oFC.Entity.Name;
-                InputCurrency   = oFC.InputCurrency.Name;
-                InputSite       = oFC.InputRecipient.Name;
-                PublicationSite = oFC.PublishingRecipient.Name;
+                Reporting             = roContext.Get<ReportingLight>(oFC.Phase.Name, oFC.UpdatePeriod.Name);
+                Entity                = oFC.Entity.Name;
+                InputCurrency         = oFC.InputCurrency.Name;
+                InputSite             = oFC.InputRecipient.Name;
+                PublicationSite       = oFC.PublishingRecipient.Name;
                 PackPackage.ReadFrom(roObject, roContext);
                 PackRestriction.ReadFrom(roObject, roContext);
                 PackOperation.ReadFrom(roObject, roContext);
             }
         }
 
-        public void WriteInto(ICtObject roObject, MessageList roMess, Context roContext, Framework voFramework)
+        public override void WriteInto(ICtObject roObject, MessageList roMess, Context roContext)
         {
             ICtEntityReporting oFC = (ICtEntityReporting)roObject;
 
+            // May have changed since reading
+            Reporting = roContext.Get<ReportingLight>(Reporting.Phase, Reporting.UpdatePeriod);
+
+            oFC.Reporting           = Reporting.FCValue();
             oFC.Entity              = roContext.GetRefValue(Dims.Entity, Entity).FCValue();
             oFC.InputCurrency       = roContext.GetRefValue(Dims.Currency, InputCurrency).FCValue();
             oFC.InputRecipient      = roContext.Get<Recipient>(InputSite).FCValue();
             oFC.PublishingRecipient = roContext.Get<Recipient>(PublicationSite).FCValue();
-            PackPackage.WriteInto(roObject, roMess, roContext, voFramework);
+            Framework oFramework    = roContext.Get<Framework>(Reporting.Phase, Reporting.FrameworkVersion);
+
+            PackPackage.WriteInto(roObject, roMess, roContext, oFramework);
             PackRestriction.WriteInto(roObject, roMess, roContext);
-            PackOperation.WriteInto(roObject, roMess, roContext, voFramework);
+            PackOperation.WriteInto(roObject, roMess, roContext, oFramework);
 
             _oLog.Debug($"Writen  {this.GetType().Name} {Entity}");
         }
 
-        public bool IsValid(Context roContext, MessageList roMess, DateTime voStart, DateTime voEnd)
+        public override bool IsValid(Context roContext, MessageList roMess)
         {
             bool bRet = true;
 
@@ -357,8 +369,29 @@ namespace CTSWeb.Models
             if (bRet) bRet = roContext.Exists<Recipient>(PublicationSite);
             if (!bRet) roMess.Add("RF0517", Entity, PublicationSite);
 
-            if (bRet) bRet = PackOperation.IsValid(roContext, roMess, voStart, voEnd, Entity);
+            if (bRet) bRet = (!(Reporting is null));
+            if (!bRet) roMess.Add("RF0518", Entity);
 
+            if (bRet) bRet = PackOperation.IsValid(roContext, roMess, Reporting.ReportingStartDate, Reporting.ReportingEndDate, Entity);
+
+            return bRet;
+        }
+
+        public override bool Exists(Context roContext)
+        {
+            bool bRet = false;
+
+            if (!(Reporting is null))
+            {
+                ICtRefValue oPhase = roContext.GetRefValue(Dims.Phase, Reporting.Phase).FCValue();
+                ICtRefValue oUpdPer = roContext.GetRefValue(Dims.UpdPer, Reporting.UpdatePeriod).FCValue();
+                ICtRefValue oEntity = roContext.GetRefValue(Dims.Entity, Entity).FCValue();
+
+                if ((!(oPhase is null)) && (!(oUpdPer is null)) && (!(oEntity is null))) 
+                {
+                    roContext.Execute<EntityReporting>((ICtObjectManager o) => { bRet = !(((ICtEntityReportingManager)o).EntityReporting[oPhase, oUpdPer, oEntity] is null); });
+                }
+            }
             return bRet;
         }
     }

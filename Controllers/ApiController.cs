@@ -107,6 +107,10 @@ namespace CTSWeb.Controllers
                 foreach (Reporting oObj in oReportings)
                 {
                     oContext.Save<Reporting>(oObj, oMessages);
+                    foreach (EntityReporting oEntRep in oObj.EntityReportings.Values)
+                    {
+                        oContext.Save<EntityReporting>(oEntRep, oMessages);
+                    }
                 }
                 //return new CTS_JsonResult(null, oMessages);
                 return new CTS_JsonResult(oReportings, oMessages);

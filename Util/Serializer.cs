@@ -274,15 +274,12 @@ namespace CTSWeb.Util
                         oRep.DefaultPackage.OpbScope = (string)PrNoException(oRow, "s");
                         oRep.DefaultPackage.OpbVariant = (string)PrNoException(oRow, "t");
                         oRep.DefaultPackage.OpbConsCurrency = (string)PrNoException(oRow, "u");
-                        oRep.DefaultOperation.UseDefaultPublish = (bool)PrNoException(oRow, "v");
                         oRep.DefaultOperation.PackPublishingCutOffDate = (DateTime)PrNoException(oRow, "w");
                         oRep.DefaultOperation.AllowEarlyPublishing = (bool)PrNoException(oRow, "x");
-                        oRep.DefaultOperation.UseDefaultAfterPub = (bool)PrNoException(oRow, "y");
                         oRep.DefaultOperation.AfterPublication.Standard = (bool)PrNoException(oRow, "z");
                         oRep.DefaultOperation.AfterPublication.Special = (bool)PrNoException(oRow, "aa");
                         oRep.DefaultOperation.AfterPublication.Advanced = (bool)PrNoException(oRow, "ab");
                         oRep.DefaultOperation.AfterPublication.Level = (short?)(long?)PrNoException(oRow, "ac");
-                        oRep.DefaultOperation.UseDefaultAfterTran = (bool)PrNoException(oRow, "ad");
                         oRep.DefaultOperation.AfterTransfer.Standard = (bool)PrNoException(oRow, "ae");
                         oRep.DefaultOperation.AfterTransfer.Special = (bool)PrNoException(oRow, "af");
                         oRep.DefaultOperation.AfterTransfer.Advanced = (bool)PrNoException(oRow, "ag");
@@ -294,22 +291,22 @@ namespace CTSWeb.Util
                         oRep.ReportingEndDate = (DateTime)PrNoException(oRow, "an");
 
                         string s;
-                        LanguageText oText;
-                        List<LanguageText> oDesc = new List<LanguageText>();
-                        foreach (string sCulture in voContext.Language.GetKnownCultureLanguages())
+                        Descs oText;
+                        List<Descs> oDesc = new List<Descs>();
+                        foreach (var oLang in voContext.Language.SupportedLanguages)
                         {
                             oText = null;
-                            foreach (var o in LanguageText.TypeInfo)
+                            foreach (var o in Descs.FieldList)
                             {
-                                s = (string)PrNoException(oRow, "au" + o.Item3 + sCulture.Replace('-', '_'));
+                                s = (string)PrNoException(oRow, "au" + o.Item2 + oLang.Item2.Replace('-', '_'));
                                 if (!(s is null))
                                 {
                                     if (oText is null)
                                     {
-                                        oText = new LanguageText(sCulture, voContext.Language);
+                                        oText = new Descs(oLang.Item2, voContext.Language);
                                         oDesc.Add(oText);
                                     }
-                                    oText.Texts.Add(o.Item3, s);
+                                    oText.Texts.Add(o.Item2, s);
                                 }
                             }
                         }
