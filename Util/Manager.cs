@@ -50,6 +50,7 @@ namespace CTSWeb.Util
 	{
 		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
+		private protected static bool _bReadDesc = true;
 		private protected static bool _bSaveName = true;
 
 		private static readonly HashSet<char> _oAllowedCharsInNames = new HashSet<char>("ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-".ToCharArray());
@@ -93,7 +94,7 @@ namespace CTSWeb.Util
 			{
 				ID = roObject.ID;
 				Name = roObject.Name;
-				LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roContext.Language.WorkingLanguage);
+				if (_bReadDesc) LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roContext.Language.WorkingLanguage);
 				_oLog.Debug($"Loaded managed object {Name}");
 			}
 		}

@@ -107,7 +107,7 @@ namespace CTSWeb.Controllers
                 foreach (Reporting oObj in oReportings)
                 {
                     oContext.Save<Reporting>(oObj, oMessages);
-                    foreach (EntityReporting oEntRep in oObj.EntityReportings.Values)
+                    foreach (EntityReporting oEntRep in oObj.EntityReportings)
                     {
                         oContext.Save<EntityReporting>(oEntRep, oMessages);
                     }

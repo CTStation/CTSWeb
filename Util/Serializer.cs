@@ -233,25 +233,26 @@ namespace CTSWeb.Util
         {
             List<Reporting> oRet = new List<Reporting>();
 
-            Dictionary<string, Reporting> oCur = new Dictionary<string, Reporting>();
-            string PrBuildKey(string vsPhase, string vsUpdPer) => vsPhase + "\t" + vsUpdPer;
+            Dictionary<(string, string, string), Reporting> oCurRep = new Dictionary<(string, string, string), Reporting>();
+            Dictionary<(string, string, string), EntityReporting> oCurEntity = new Dictionary<(string, string, string), EntityReporting>();
 
             object PrNoException(DataRow voRow, string vsColName) => (voTable.Columns.Contains(vsColName) && (!(voRow[vsColName] is DBNull))) ? voRow[vsColName] : null;
 
             int c = 0;
-            string sKey;
+            (string, string, string) sKey;
             Reporting oRep;
             EntityReporting oEntityRep;
             foreach (DataRow oRow in voTable.Rows)
             {
                 if (!voInvalidRows.Contains(c))
                 {
-                    sKey = PrBuildKey((string)oRow["aj"], (string)oRow["ak"]);
-                    if (!oCur.TryGetValue(sKey, out oRep))
+                    sKey = ((string)oRow["aj"], (string)oRow["ak"], "");
+                    if (!oCurRep.TryGetValue(sKey, out oRep))
                     {
                         oRep = new Reporting();
                         oRep.ReadFrom(null, voContext);
                         oRet.Add(oRep);
+                        oCurRep.Add(sKey, oRep);
                     }
                     {
                         oRep.DefaultPackage.UseDefaultWindowsFolder = (bool)PrNoException(oRow, "b");
@@ -313,12 +314,13 @@ namespace CTSWeb.Util
                         oRep.Descriptions = oDesc.ToArray();
                     }
 
-                    sKey = (string)oRow["ca"];
-                    if (!oRep.EntityReportings.TryGetValue(sKey, out oEntityRep))
+                    sKey = ((string)oRow["aj"], (string)oRow["ak"], (string)oRow["ca"]);
+                    if (!oCurEntity.TryGetValue(sKey, out oEntityRep))
                     {
                         oEntityRep = new EntityReporting();
                         oEntityRep.ReadFrom(null, voContext);
-                        oRep.EntityReportings.Add(sKey, oEntityRep);
+                        oRep.EntityReportings.Add(oEntityRep);
+                        oCurEntity.Add(sKey, oEntityRep);
                     }
                     {
                         oEntityRep.Entity = (string)PrNoException(oRow, "ca");

@@ -1,7 +1,0 @@
-                ("P001.ctstation.fr", "172.31.38.85"),
-                ("P002.ctstation.fr", "SAPFCSQLSERVER"),
-                ("P003.ctstation.fr", ""),
-                ("P004.ctstation.fr", "ADMIN"),
-                ("P005.ctstation.fr", ""),
-                ("P007.ctstation.fr", "fr-FR"),
-                ("P008.ctstation.fr", "en-US, fr-FR, de-DE"),

@@ -156,7 +156,7 @@ namespace CTSWeb.Models
         public Package DefaultPackage                               = new Package();
         public Restriction DefaultRestriction                       = new Restriction();
         public Operation DefaultOperation                           = new Operation(){ UseDefaultPublish = false, UseDefaultAfterPub = false, UseDefaultAfterTran = false };
-        public SortedList<string, EntityReporting> EntityReportings = new SortedList<string, EntityReporting>();
+        public List<EntityReporting> EntityReportings               = new List<EntityReporting>();
 
 
         public override void ReadFrom(ICtObject roObject, Context roContext)
@@ -182,7 +182,7 @@ namespace CTSWeb.Models
                     {
                         o = new EntityReporting();
                         o.ReadFrom(oFCDetail, roContext);
-                        EntityReportings.Add(o.Entity, o);
+                        EntityReportings.Add(o);
                     }
                 }
 
@@ -248,7 +248,7 @@ namespace CTSWeb.Models
             if (bRet) bRet = (Framework.Status == CTKREFLib.kref_framework_status.FRMK_STATUS_PUBLISHED);
             if (!bRet) roMess.Add("RF0010", Phase, FrameworkVersion);
 
-            foreach (EntityReporting o in EntityReportings.Values) 
+            foreach (EntityReporting o in EntityReportings) 
             { 
                 if (bRet) bRet = o.IsValid(roContext, roMess); else break; 
             }
@@ -271,6 +271,7 @@ namespace CTSWeb.Models
 
                 List<Reporting> oUnFinalized = Serialiser.ReadReportings(voData.Tables["Table"], oInvalidRows, roContext);
 
+                ReportingLight oLight;
                 foreach (Reporting oFullRep in oUnFinalized)
                 {
                     // Check framework exists
@@ -280,8 +281,14 @@ namespace CTSWeb.Models
                     }
                     else
                     {
+                        // Finalize: get IDs, set names
+                        oFullRep.ID = roContext.TryGet<ReportingLight>(oFullRep.Phase, oFullRep.UpdatePeriod, out oLight) ? oLight.ID : 0;
                         oFullRep.Name = oFullRep.Phase + " - " + oFullRep.UpdatePeriod;
-                        foreach (EntityReporting o in oFullRep.EntityReportings.Values) o.Reporting = oFullRep;
+                        foreach (EntityReporting o in oFullRep.EntityReportings)
+                        {
+                            o.Reporting = oFullRep;
+                            o.LookUpID(roContext);
+                        }
                         oRet.Add(oFullRep);
                     }
                 }
@@ -298,6 +305,7 @@ namespace CTSWeb.Models
 
         static EntityReporting()
         {
+            _bReadDesc = false;
             _bSaveName = false;
 
             Manager.Register<EntityReporting>((int)CtReportingManagers.CT_ENTITY_REPORTING_MANAGER);
@@ -387,12 +395,30 @@ namespace CTSWeb.Models
                 ICtRefValue oUpdPer = roContext.GetRefValue(Dims.UpdPer, Reporting.UpdatePeriod).FCValue();
                 ICtRefValue oEntity = roContext.GetRefValue(Dims.Entity, Entity).FCValue();
 
-                if ((!(oPhase is null)) && (!(oUpdPer is null)) && (!(oEntity is null))) 
+                if ((!(oPhase is null)) && (!(oUpdPer is null)) && (!(oEntity is null)))
                 {
                     roContext.Execute<EntityReporting>((ICtObjectManager o) => { bRet = !(((ICtEntityReportingManager)o).EntityReporting[oPhase, oUpdPer, oEntity] is null); });
                 }
             }
             return bRet;
+        }
+
+        public void LookUpID(Context roContext)
+        {
+            ICtEntityReporting oFC = null;
+
+            if (!(Reporting is null))
+            {
+                ICtRefValue oPhase = roContext.GetRefValue(Dims.Phase, Reporting.Phase).FCValue();
+                ICtRefValue oUpdPer = roContext.GetRefValue(Dims.UpdPer, Reporting.UpdatePeriod).FCValue();
+                ICtRefValue oEntity = roContext.GetRefValue(Dims.Entity, Entity).FCValue();
+
+                if ( (!(oPhase is null)) && (!(oUpdPer is null)) && (!(oEntity is null)) )
+                {
+                    roContext.Execute<EntityReporting>((ICtObjectManager o) => { oFC = ((ICtEntityReportingManager)o).EntityReporting[oPhase, oUpdPer, oEntity]; });
+                }
+            }
+            ID = (oFC is null) ? 0 : oFC.ID;
         }
     }
 

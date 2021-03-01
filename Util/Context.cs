@@ -60,11 +60,17 @@ namespace CTSWeb.Util
             // TODO: use session token
             public PrConnectionInfo(NameValueCollection roColl)
             {
-                _oInfo = (roColl.Get("P001.ctstation.fr"),
-                                roColl.Get("P002.ctstation.fr"),
-                                roColl.Get("P003.ctstation.fr"),
-                                roColl.Get("P004.ctstation.fr"),
-                                roColl.Get("P005.ctstation.fr"),
+                string PrVoidIfNull(string vsKey)
+                {
+                    string s = roColl.Get(vsKey);
+                    return (s is null) ? "" : s;
+                }
+
+                _oInfo = (PrVoidIfNull("P001.ctstation.fr"),
+                                PrVoidIfNull("P002.ctstation.fr"),
+                                PrVoidIfNull("P003.ctstation.fr"),
+                                PrVoidIfNull("P004.ctstation.fr"),
+                                PrVoidIfNull("P005.ctstation.fr"),
                                 Thread.CurrentThread.ManagedThreadId
                             );
             }
