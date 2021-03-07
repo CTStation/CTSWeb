@@ -152,5 +152,13 @@ namespace CTSWeb.Controllers
             return new CTS_JsonResult(Serialiser.CreateTable());
         }
         );
+
+
+        public ActionResult CloseConnections() => PrSafeResult(() =>
+        {
+            Context.CloseAll();
+            return null;
+        }
+        );
     }
 }

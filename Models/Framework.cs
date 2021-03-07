@@ -76,7 +76,7 @@ namespace CTSWeb.Models
 
         public ControlLevel GetControlLevel(short? viRank)
         {
-            return viRank is null ? null : ControlLevels[(short)viRank];
+            return viRank is null || viRank == 0 ? null : ( (ControlLevels.ContainsKey((short)viRank)) ? ControlLevels[(short)viRank] : null);
         }
 
         public ControlSet GetSetOfControl(string vsName)

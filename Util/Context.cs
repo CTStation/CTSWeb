@@ -222,6 +222,12 @@ namespace CTSWeb.Util
         };
 
 
+        public static void CloseAll()
+        {
+            S_oCache.RemoveAll();
+        }
+
+
         // This is called by the using() pattern, as the class implements iDisposible
         public void Dispose()
         {

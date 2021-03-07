@@ -22,8 +22,6 @@ namespace CTSWeb.Models
 {
     public class ReportingLight : ManagedObjectWithDescAndSecurity // Inherits ID and Name
     {
-        // TODO use attribute rather than a full field
-
         static ReportingLight()
         {
             _bSaveName = false;
@@ -649,9 +647,9 @@ namespace CTSWeb.Models
 
             if (bRet) bRet = (!(PackPublishingCutOffDate == default)) && (voStart <= PackPublishingCutOffDate) && (PackPublishingCutOffDate <= voEnd);
             if (!bRet) { if (voEntity is null) roMess.Add("RF0511"); else roMess.Add("RF0512", voEntity); }
-            if (bRet) bRet = (AfterPublication.Level is null) ^ (AfterPublication.Advanced);
+            if (bRet) bRet = (AfterPublication.Level is null || AfterPublication.Level == 0) ^ (AfterPublication.Advanced);
             if (!bRet) { if (voEntity is null) roMess.Add("RF0513"); else roMess.Add("RF0515", voEntity); }
-            if (bRet) bRet = (AfterTransfer.Level is null) ^ (AfterTransfer.Advanced);
+            if (bRet) bRet = (AfterTransfer.Level is null || AfterTransfer.Level == 0) ^ (AfterTransfer.Advanced);
             if (!bRet) { if (voEntity is null) roMess.Add("RF0514"); else roMess.Add("RF0516", voEntity); }
 
             return bRet;

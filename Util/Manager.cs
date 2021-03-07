@@ -716,7 +716,7 @@ namespace CTSWeb.Util
 						{
 							((dynamic)(oFCObj.Manager)).SaveObject(oFCObj);
 							//PrGetMgr<tObject>(roContext).SaveObject(oFCObj);
-							_oLog.Debug("Saved object {roObject.Name}");
+							_oLog.Debug($"Saved object {roObject.Name}");
 						}
 						catch (COMException e)
 						{

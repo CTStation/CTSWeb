@@ -35,7 +35,7 @@ namespace CTSWeb.Util
 	public class TimedCache<tKey, tValue>
 	{
 		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-		
+
 		private class TItem<tValue2>
 		{
 			private readonly int _iLastUsedTick;
@@ -51,66 +51,83 @@ namespace CTSWeb.Util
 			public int LastUsed { get => _iLastUsedTick; }
 		}
 
-		private const int S_Resolution = 100;		// Number of time the cleanup is called for each lifespan
-		private readonly ConcurrentDictionary< tKey, ConcurrentQueue< TItem<tValue> > > _oCache;
-		private readonly int _iLifespanTicks;   
+		private const int S_Resolution = 100;       // Number of time the cleanup is called for each lifespan
+		private readonly ConcurrentDictionary<tKey, ConcurrentQueue<TItem<tValue>>> _oCache;
+		private readonly int _iLifespanTicks;
 		private readonly Action<tValue> _oDisposeValue = null;
 		private readonly Thread _oCleanupThread;
 
-		
+		public bool ShouldRun = true;
+
 		public TimedCache(Action<tValue> roDisposeValue, int viLifespanTicks = 300000)    // Default life span = 5', 300s, 300000ms
 		{
 			_oCache = new ConcurrentDictionary<tKey, ConcurrentQueue<TItem<tValue>>>();
-			_iLifespanTicks = (viLifespanTicks < S_Resolution) ? S_Resolution : viLifespanTicks;			// Minimum for a 1/100 resolution of scanning for old values
+			_iLifespanTicks = (viLifespanTicks < S_Resolution) ? S_Resolution : viLifespanTicks;            // Minimum for a 1/100 resolution of scanning for old values
 			_oDisposeValue = roDisposeValue;
-            _oCleanupThread = new Thread(this.PrRemoveOldItems)
-            {
-                Name = "TimedCache cleanup every " + ((Double)(_iLifespanTicks / S_Resolution / 1000.0)).ToString() + " second",
-                Priority = ThreadPriority.BelowNormal,
-                IsBackground = true
-            };
-            _oCleanupThread.Start(this);
+			_oCleanupThread = new Thread(this.PrRemoveOldItems)
+			{
+				Name = "TimedCache cleanup every " + ((Double)(_iLifespanTicks / S_Resolution / 1000.0)).ToString() + " second",
+				Priority = ThreadPriority.BelowNormal,
+				IsBackground = true
+			};
+			_oCleanupThread.Start(this);
 		}
 
 
-		public void Push (tKey roKey, tValue roValue)
-        {
+		public void Push(tKey roKey, tValue roValue)
+		{
 			TItem<tValue> oItem = new TItem<tValue>(roValue);
 			_oCache.GetOrAdd(roKey, (oKey) => { return new ConcurrentQueue<TItem<tValue>>(); }).Enqueue(oItem);
-        }
+		}
 
 
 		public bool TryPop(tKey roKey, out tValue roValue)
-        {
+		{
 			bool bRet = false;
-            roValue = default(tValue);
+			roValue = default(tValue);
 
-            if (_oCache.TryGetValue(roKey, out ConcurrentQueue<TItem<tValue>> oFIFO))
-            {
-                if (oFIFO.TryDequeue(out TItem<tValue> oItem))
-                {
-                    // Can return a somewhat outdated entry, never much more than the resolution
-                    roValue = oItem.Value;
-                    bRet = true;
-                }
+			if (_oCache.TryGetValue(roKey, out ConcurrentQueue<TItem<tValue>> oFIFO))
+			{
+				if (oFIFO.TryDequeue(out TItem<tValue> oItem))
+				{
+					// Can return a somewhat outdated entry, never much more than the resolution
+					roValue = oItem.Value;
+					bRet = true;
+				}
 				// The FIFO queue for each key is never removed, to avoid a race condition
 			}
 			return bRet;
 		}
 
 
+		public void RemoveAll()
+        {
+			foreach (KeyValuePair<tKey, ConcurrentQueue<TItem<tValue>>> o in _oCache)
+			{
+				foreach (TItem<tValue> oItem in o.Value)
+				{
+					if (o.Value.TryDequeue(out TItem<tValue> oRemovedItem))
+					{
+						_oLog.Debug($"Discarding {oRemovedItem.Value.ToString()}");
+						_oDisposeValue?.Invoke(oRemovedItem.Value);
+						_oLog.Debug($"Completed discarding {oRemovedItem.Value.ToString()}");
+					}
+				}
+			}
+		}
+
+
 		private void PrRemoveOldItems(object rObj)
 		{
-			
 			int iLastLiveTick;
 			TimedCache<tKey, tValue> oCache = rObj as TimedCache<tKey, tValue>;
 
-			while (true)
+			while (oCache.ShouldRun)
 			{
 				// Avoid underflow during the first 5 minutes of server uptime
 				iLastLiveTick = Environment.TickCount;
 				if (oCache._iLifespanTicks < iLastLiveTick) iLastLiveTick -= oCache._iLifespanTicks;
-				foreach (KeyValuePair<tKey, ConcurrentQueue< TItem<tValue>>> o in oCache._oCache)
+				foreach (KeyValuePair<tKey, ConcurrentQueue<TItem<tValue>>> o in oCache._oCache)
 				{
 					foreach (TItem<tValue> oItem in o.Value)
 					{
@@ -129,13 +146,17 @@ namespace CTSWeb.Util
 								oCache._oDisposeValue?.Invoke(oRemovedItem.Value);
 								_oLog.Debug($"Completed discarding {oRemovedItem.Value.ToString()}");
 							}
-						} else {
-							break;	// if an entry is live, all the next ones should be. Otherwise, they'll get caght on the next run 
-                        }
+						}
+						else
+						{
+							break;  // if an entry is live, all the next ones should be. Otherwise, they'll get caght on the next run 
+						}
 					}
 				}
 				Thread.Sleep(oCache._iLifespanTicks / S_Resolution);
 			}
+			// Thread was asked to stop. Empty all queues
+			oCache.RemoveAll();
 		}
 	}
 }
