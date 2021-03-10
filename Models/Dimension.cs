@@ -33,6 +33,23 @@ namespace CTSWeb.Models
 
         // Argument-less constructor
         public Dimension() { }
+
+
+
+        public static List<ManagedObject> GetPublishedFrameworks(Context roContext)
+        {
+            List<ManagedObject> oRet = new List<ManagedObject>();
+            foreach (Framework o in roContext.GetAll<Framework>())
+            {
+                if (o.Status == kref_framework_status.FRMK_STATUS_PUBLISHED)
+                {
+                    ManagedObject oTmp = new ManagedObject();
+                    oTmp.ReadFrom(o.FCValue(), roContext);
+                    oRet.Add(oTmp);
+                }
+            }
+            return oRet;
+        }
     }
 
 
@@ -108,6 +125,36 @@ namespace CTSWeb.Models
     }
 
     // TODO: integrate dimensions in the Get<> Exists<> pattern
+
+
+    public static class ListOfValues
+    {
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        public static List<ManagedObject> GetPublishedFrameworks(Context roContext)
+        {
+            List<ManagedObject> oRet = new List<ManagedObject>();
+            foreach (Framework o in roContext.GetAll<Framework>())
+            {
+                if (o.Status == kref_framework_status.FRMK_STATUS_PUBLISHED)
+                {
+                    ManagedObject oTmp = new ManagedObject();
+                    oTmp.ReadFrom(o.FCValue(), roContext);
+                    oRet.Add(oTmp);
+                }
+            }
+            return oRet;
+        }
+
+        public enum AccesMode
+        {
+            iType,
+            iDimension,
+            iPublishedFramework
+        }
+    }
+
+
 }
 
 

@@ -147,6 +147,23 @@ namespace CTSWeb.Controllers
         );
 
 
+        [HttpPost]
+        public ActionResult RefValues() => PrSafeResult(() =>
+        {
+            Stream oBody = this.Request.InputStream;
+            oBody.Seek(0, SeekOrigin.Begin);
+            JsonTextReader oJReader = new JsonTextReader(new StreamReader(oBody));
+            // JObject o = JObject.Load(oJReader);
+            List<String> oSet = new JsonSerializer().Deserialize<List<string>>(oJReader);
+            using (Context oContext = new Context(this.HttpContext))
+            {
+                return new CTS_JsonResult(oSet);
+            }
+        }
+);
+
+
+
         public ActionResult TestTable() => PrSafeResult(() =>
         {
             return new CTS_JsonResult(Serialiser.CreateTable());
