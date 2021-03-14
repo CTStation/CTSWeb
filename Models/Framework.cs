@@ -20,7 +20,6 @@ using CTSWeb.Util;
 
 namespace CTSWeb.Models
 {
-
     public class Framework : ManagedObject // Inherits ID and Name and LDesc
     {
         static Framework()
@@ -73,6 +72,20 @@ namespace CTSWeb.Models
                 }
             }
         }
+
+
+        // Multi part 		
+        public override List<ManagedObject> GetIdentifierParts(ICtObject roFCObject, Context roContext)
+		{
+            IRefObjRef o = (IRefObjRef)roFCObject;
+            return new List<ManagedObject>() { (ManagedObject)new RefValueLight(o.Phase, roContext), (ManagedObject)new RefValueLight(o.Version, roContext) };
+        }
+
+
+        public static List<NodeDesc> GetPublishedFrameworks(Context roContext) =>
+            MultiPartID.MultipartList<Framework>(roContext, new Framework().GetIdentifierParts,
+                                                                    (ICtObject oFramework) => ((IRefObjRef)oFramework).RefStatus == kref_framework_status.FRMK_STATUS_PUBLISHED);
+
 
         public ControlLevel GetControlLevel(short? viRank)
         {

@@ -14,30 +14,6 @@ namespace CTSWeb.Util.Tests
     [TestClass()]
     public class SerialiserTests
     {
-        private static NameValueCollection PrContext(List<(string, string)> voHeaders)
-        {
-            var oRet = new NameValueCollection(voHeaders.Count);
-            foreach (var o in voHeaders)
-            {
-                oRet.Add(o.Item1, o.Item2);
-            }
-            return oRet;
-        }
-
-        private static List<(string, string)> _oParams = new List<(string, string)>()
-            {
-                ("P001.ctstation.fr", "172.31.38.85"),
-                ("P002.ctstation.fr", "SAPFCSQLSERVER"),
-                ("P003.ctstation.fr", ""),
-                ("P004.ctstation.fr", "ADMIN"),
-                ("P005.ctstation.fr", ""),
-                ("P007.ctstation.fr", "fr-FR"),
-                ("P008.ctstation.fr", "en-US, fr-FR, de-DE"),
-            };
-
-        private static NameValueCollection _oHeaders = PrContext(_oParams);
-
-
         private static SerConfig[] PrBuildParam(List<(SerFieldType, string, string, SerDirective)> voParam)
         {
             var oRet = new SerConfig[voParam.Count];

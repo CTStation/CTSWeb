@@ -9,9 +9,11 @@
 #endregion
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 using log4net;
 using CTCLIENTSERVERLib;
 
@@ -46,7 +48,13 @@ namespace CTSWeb.Util
 		Period
 	}
 
-	public class ManagedObject
+
+
+	// -----------------------------------------
+	//		Managed objects base classes
+	// -----------------------------------------
+
+	public class ManagedObject : INamedObject
 	{
 		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
@@ -80,12 +88,13 @@ namespace CTSWeb.Util
 		// Needs a pair of functions to read from and write to a generic FC object
 		// These will be called both for new and existing objects
 
-		private string _sName;		// Needed to enforce uppercase names
+		private string _sName;      // Needed to enforce uppercase names
 
 
 		public int ID;
 		public string Name { get { return _sName; } set { _sName = value.ToUpperInvariant(); } }
 		public string LDesc;             // Ldesc in working language
+
 
 		public virtual void ReadFrom(ICtObject roObject, Context roContext)
 		{
@@ -174,12 +183,21 @@ namespace CTSWeb.Util
 			}
 			return bRet;
 		}
+
+
+		// Most oobjects are identified by there name. Those whose identifier is more complex (Framework for ex) should override this
+		public virtual List<ManagedObject> GetIdentifierParts(ICtObject roFCObject, Context roContext)
+		{
+			ManagedObject o = new ManagedObject();
+			o.ReadFrom(roFCObject, roContext);
+			return new List<ManagedObject>() { o };
+		}
 	}
 
 
 
-	// Set descriptions to empty string to force an empty desc. Null means 'do not change what's already there'
-	public class ManagedObjectWithDesc : ManagedObject
+		// Set descriptions to empty string to force an empty desc. Null means 'do not change what's already there'
+		public class ManagedObjectWithDesc : ManagedObject
 	{
 		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
@@ -328,6 +346,13 @@ namespace CTSWeb.Util
 
 
 
+
+
+
+
+	// -----------------------------------------
+	//		Main functions
+	// -----------------------------------------
 
 	public static class Manager
 	{
@@ -736,6 +761,13 @@ namespace CTSWeb.Util
 		}
 
 
+
+
+
+
+		// -----------------------------------------
+		//		Dealing with dimensions
+		// -----------------------------------------
 
 		public static HashSet<string> GetRefValueCodes(Context roContext, Dims viTableCode)
 		{

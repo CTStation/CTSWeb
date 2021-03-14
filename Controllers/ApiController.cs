@@ -147,22 +147,6 @@ namespace CTSWeb.Controllers
         );
 
 
-        [HttpPost]
-        public ActionResult RefValues() => PrSafeResult(() =>
-        {
-            Stream oBody = this.Request.InputStream;
-            oBody.Seek(0, SeekOrigin.Begin);
-            JsonTextReader oJReader = new JsonTextReader(new StreamReader(oBody));
-            // JObject o = JObject.Load(oJReader);
-            List<String> oSet = new JsonSerializer().Deserialize<List<string>>(oJReader);
-            using (Context oContext = new Context(this.HttpContext))
-            {
-                return new CTS_JsonResult(oSet);
-            }
-        }
-);
-
-
 
         public ActionResult TestTable() => PrSafeResult(() =>
         {
@@ -175,6 +159,35 @@ namespace CTSWeb.Controllers
         {
             Context.CloseAll();
             return null;
+        }
+        );
+
+
+        public ActionResult Metadata(string id) => PrSafeResult(() =>
+        {
+            using (Context oContext = new Context(this.HttpContext))
+            {
+                MessageList oMessages = oContext.NewMessageList();
+                object o = null;
+                switch (id)
+                {
+                    case "PublishedFramework":
+                        o = Framework.GetPublishedFrameworks(oContext); 
+                        break;
+                    case "Dim_Entity":
+                        o = oContext.GetRefValues(Dims.Entity);
+                        break;
+                   /* case "Recipient":
+                        o = oContext.GetAll<Recipient>();
+                        break; */
+                    case "Folder":
+                        o = oContext.GetAll<Folder>();
+                        break;
+                    default:
+                        break;
+                }
+                return new CTS_JsonResult(o, oMessages);
+            }
         }
         );
     }
