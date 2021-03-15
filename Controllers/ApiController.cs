@@ -168,7 +168,7 @@ namespace CTSWeb.Controllers
             using (Context oContext = new Context(this.HttpContext))
             {
                 MessageList oMessages = oContext.NewMessageList();
-                object o = null;
+                object o = new List<ManagedObject>();
                 switch (id)
                 {
                     case "PublishedFramework":

@@ -423,6 +423,7 @@ namespace CTSWeb.Util
 			catch (System.Runtime.InteropServices.COMException e)
 			{
 				roContext.HasFailedRquests = true;
+				_oLog.Debug($"Failed request {e}");
 				throw e;
 			}
 		}
