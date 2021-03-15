@@ -147,7 +147,7 @@ namespace CTSWeb.Util
                 _oLog.Debug($"Opening new config {_oKey.BrokerName}_{_oKey.DatasourceName} {_oKey.UserName} in thread {_oKey.ThreadID}");
                 _oConfig = new ConfigClass(_oKey.BrokerName, _oKey.DatasourceName, _oKey.DatasourcePassword, _oKey.UserName, _oKey.Password, "");
                 _oLog.Debug("Connecting...");
-                _oConfig?.Connect();
+                _oConfig.Connect();
                 _oLog.Debug("Connected");
             }
 
