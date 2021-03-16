@@ -21,7 +21,7 @@ namespace CTSWeb.Util
 
     public class ConfigClass
     {
-        private static readonly ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         private string _brokerName;
         private string _datasourceName;
         private string _datasourcePassword;
@@ -149,12 +149,33 @@ namespace CTSWeb.Util
         
         public bool IsActive(string rsBrokerName = null, string rsDatasourceName = null, string rsUserName = null, string rsPassword = null)
         {
-            bool bRet = false;
-            if (!(_session2 is null)) { bRet = _session2.IsLogged; }
+            bool bRet = !(_session2 is null);
+            if (bRet) bRet = _session2.IsLogged;
             if (bRet) bRet = rsBrokerName is null || rsBrokerName == _brokerName;
             if (bRet) bRet = rsDatasourceName is null || rsDatasourceName == _datasourceName;
             if (bRet) bRet = rsUserName is null || rsUserName == _userName;
             if (bRet) bRet = rsPassword is null || rsPassword == _password;
+            // Switching streams when queries arrive rapidly at the server caused some errors
+            //  usualy when reusing a config that was stored for later use.
+            //  This test tries to check that the session still works OK
+            //  Assumes the number of phases is small enough to not incur too big a time penalty
+            if (bRet)
+            {
+                try
+                {
+                    ICtProviderContainer oContainer = (ICtProviderContainer)_session2;
+                    ICtObjectManager oManager = (ICtObjectManager)oContainer.get_Provider(1, (int)CTCOMMONMODULELib.ct_refvalue_managers.REFVALUEMANAGER_PHASE);
+                    foreach (ICtObject o in oManager.GetObjects(null, ACCESSFLAGS.OM_READ, (int)ALL_CAT.ALL, null))
+                    {
+                        bRet &= !(o.Name is null);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _oLog.Warn($"Exception \n {e} \n occurred while checking the session. Connection should be discarded.");
+                    bRet = false;
+                }
+            }
             return bRet;
         }
 
@@ -250,7 +271,7 @@ namespace CTSWeb.Util
             }
             catch (Exception ex)
             {
-                log.Warn(ex.Message);
+                _oLog.Warn(ex.Message);
             }
         }
 

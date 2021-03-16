@@ -132,7 +132,7 @@ namespace CTSWeb.Util
             bool bFoundInCache = false;
             while (S_oCache.TryPop(_oKey, out ConfigClass oConfig))
             {
-                // This test should prevent using a stalled connection TODO remove connection by thread or add it here
+                // This test should prevent using a stalled connection
                 if (oConfig.IsActive(_oKey.BrokerName, _oKey.DatasourceName, _oKey.UserName, _oKey.Password))
                 {
                     _oConfig = oConfig;
@@ -245,6 +245,7 @@ namespace CTSWeb.Util
                 }
                 else
                 {
+                    _oLog.Debug($"Discarding failed connection {_oKey.BrokerName}_{_oKey.DatasourceName} {_oKey.UserName} in thread {_oKey.ThreadID}");
                     Config.Disconnect();
                 }
             }

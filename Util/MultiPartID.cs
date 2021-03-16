@@ -75,8 +75,8 @@ namespace CTSWeb.Util
 
 		public NodeDesc(ManagedObject o)
         {
-			Name = o.Name;
-			Desc = o.LDesc;
+			Name = (o.Name is null) ? "" : o.Name;
+			Desc = (o.LDesc is null) ? "" : o.LDesc;
         }
 
 		public void Add(NodeDesc o) { if (Next is null) Next = new List<NodeDesc>(); Next.Add(o); }
