@@ -90,7 +90,7 @@ namespace CTSWeb.Util
 
         #region static class fields
         private static readonly TimedCache<PrConnectionInfo, ConfigClass> S_oCache =
-                new TimedCache<PrConnectionInfo, ConfigClass>(ConfigClass.Close);   // Closes unused connections after 5 minutes
+                new TimedCache<PrConnectionInfo, ConfigClass>(ConfigClass.Close, 120000);   // Closes unused connections after 2 minutes. 5' may have been the cause of FC problems
         #endregion
 
         private PrConnectionInfo _oKey;

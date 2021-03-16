@@ -49,8 +49,25 @@ namespace CTSWeb.Util.Tests
             using (Context oContext = new Context(_oHeaders))
             {
                 MessageList oMessages = oContext.NewMessageList();
-                object o = MultiPartID.MultipartList<Framework>(oContext, new Framework().GetIdentifierParts, 
-                                                                    (ICtObject oFramework) => ((IRefObjRef)oFramework).RefStatus == kref_framework_status.FRMK_STATUS_PUBLISHED) ;
+                object o = MultiPartID.MultipartList<Framework>(oContext, new Framework().GetIdentifierParts,
+                                                                    (ICtObject oFramework) => ((IRefObjRef)oFramework).RefStatus == kref_framework_status.FRMK_STATUS_PUBLISHED);
+                string s = JsonConvert.SerializeObject(o);
+                Assert.IsTrue(s != "");
+                Debug.WriteLine(s);
+            }
+        }
+
+
+
+        // TODO Supress, nothing todo here
+        [TestMethod()]
+        public void ControlTest()
+        {
+            using (Context oContext = new Context(_oHeaders))
+            {
+                MessageList oMessages = oContext.NewMessageList();
+                object o = MultiPartID.MultipartList<Framework>(oContext, new Framework().GetIdentifierParts,
+                                                                    (ICtObject oFramework) => ((IRefObjRef)oFramework).RefStatus == kref_framework_status.FRMK_STATUS_PUBLISHED);
                 string s = JsonConvert.SerializeObject(o);
                 Assert.IsTrue(s != "");
                 Debug.WriteLine(s);
