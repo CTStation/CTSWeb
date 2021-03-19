@@ -82,8 +82,16 @@ namespace CTSWeb.Models
         }
 
 
-        public static List<NodeDesc> GetPublishedFrameworks(Context roContext) =>
-            MultiPartID.MultipartList<Framework>(roContext, new Framework().GetIdentifierParts,
+        public static List<string> GetIDDimensions(Context roContext)
+        {
+            List<string> oRet = new List<string>();
+            oRet.Add(roContext.Get<Dimension>((int)CTCOMMONMODULELib.ct_dimension.DIM_PHASE).LDesc.Trim());
+            oRet.Add(roContext.Get<RefTable>((int)CTCOMMONMODULELib.ct_reftable.REFTABLE_FRAMEWORKVERSION).LDesc.Trim());
+            return oRet;
+        }
+
+        public static MultiPartID<Framework> GetPublishedFrameworks(Context roContext) =>
+            new MultiPartID<Framework>(roContext, new Framework().GetIdentifierParts, Framework.GetIDDimensions,
                                                                     (ICtObject oFramework) => ((IRefObjRef)oFramework).RefStatus == kref_framework_status.FRMK_STATUS_PUBLISHED);
 
 

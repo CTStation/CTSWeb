@@ -49,7 +49,7 @@ namespace CTSWeb.Util.Tests
             using (Context oContext = new Context(_oHeaders))
             {
                 MessageList oMessages = oContext.NewMessageList();
-                object o = MultiPartID.MultipartList<Framework>(oContext, new Framework().GetIdentifierParts,
+                object o = new MultiPartID<Framework>(oContext, new Framework().GetIdentifierParts, Framework.GetIDDimensions,
                                                                     (ICtObject oFramework) => ((IRefObjRef)oFramework).RefStatus == kref_framework_status.FRMK_STATUS_PUBLISHED);
                 string s = JsonConvert.SerializeObject(o);
                 Assert.IsTrue(s != "");
@@ -66,7 +66,7 @@ namespace CTSWeb.Util.Tests
             using (Context oContext = new Context(_oHeaders))
             {
                 MessageList oMessages = oContext.NewMessageList();
-                object o = MultiPartID.MultipartList<Framework>(oContext, new Framework().GetIdentifierParts,
+                object o = new MultiPartID<Framework>(oContext, new Framework().GetIdentifierParts, Framework.GetIDDimensions,
                                                                     (ICtObject oFramework) => ((IRefObjRef)oFramework).RefStatus == kref_framework_status.FRMK_STATUS_PUBLISHED);
                 string s = JsonConvert.SerializeObject(o);
                 Assert.IsTrue(s != "");

@@ -22,11 +22,11 @@ namespace CTSWeb.Models
 {
     public class ReportingLight : ManagedObjectWithDescAndSecurity // Inherits ID and Name
     {
+        private protected override bool _bSaveName() => false;
+        private protected override Descs.Field _iSupportedTranslatableFields() => Descs.Field.LDesc;
+
         static ReportingLight()
         {
-            _bSaveName = false;
-            _iSupportedTranslatableFields = Descs.Field.LDesc;
-
             Manager.Register<ReportingLight>((int)CtReportingManagers.CT_REPORTING_MANAGER);
 
             Manager.RegisterDelegate<ReportingLight>((Context roContext, ICtObjectManager voMgr, string vsID1, string vsID2) => 
@@ -124,10 +124,12 @@ namespace CTSWeb.Models
     public class Reporting : ReportingLight
     {
         private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        private protected override Descs.Field _iSupportedTranslatableFields() => Descs.Field.SDesc | Descs.Field.LDesc | Descs.Field.Comment;
         
+    
         static Reporting() 
         {
-            _iSupportedTranslatableFields = Descs.Field.SDesc | Descs.Field.LDesc | Descs.Field.Comment;
 
             Manager.Register<Reporting>((int)CtReportingManagers.CT_REPORTING_MANAGER);
             // Get reporting from phase and updper
@@ -301,11 +303,11 @@ namespace CTSWeb.Models
     {
         private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
+        private protected override bool _bReadDesc() => false;
+        private protected override bool _bSaveName() => false;
+
         static EntityReporting()
         {
-            _bReadDesc = false;
-            _bSaveName = false;
-
             Manager.Register<EntityReporting>((int)CtReportingManagers.CT_ENTITY_REPORTING_MANAGER);
         }
 

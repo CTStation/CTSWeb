@@ -54,12 +54,15 @@ namespace CTSWeb.Util
 	//		Managed objects base classes
 	// -----------------------------------------
 
+
+	// The best thing would be to have static fields that could be overridden
+	// But c# doesn't support that. So use instance methods and use memory as if it doesn't cost!
 	public class ManagedObject : INamedObject
 	{
 		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-		private protected static bool _bReadDesc = true;
-		private protected static bool _bSaveName = true;
+		private protected virtual bool _bReadDesc() => true;
+		private protected virtual bool _bSaveName() => true;
 
 		private static readonly HashSet<char> _oAllowedCharsInNames = new HashSet<char>("ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-".ToCharArray());
 
@@ -103,7 +106,7 @@ namespace CTSWeb.Util
 			{
 				ID = roObject.ID;
 				Name = roObject.Name;
-				if (_bReadDesc) LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roContext.Language.WorkingLanguage);
+				if (_bReadDesc()) LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roContext.Language.WorkingLanguage);
 				_oLog.Debug($"Loaded managed object {Name}");
 			}
 		}
@@ -114,7 +117,7 @@ namespace CTSWeb.Util
 			bool bTest = !(roMess is null);
 
 			// Never change object ID 
-			if (_bSaveName && (!(Name is null)))
+			if (_bSaveName() && (!(Name is null)))
 			{
 				if (bTest && !(roObject.Name is null) && roObject.Name != Name) roMess.Add("RF0310", "Name", Name, roObject.Name);
 				roObject.Name = Name;
@@ -165,7 +168,7 @@ namespace CTSWeb.Util
 					}
 					else
 					{
-						bRet = (_bSaveName) ? PrIsValidName(Name, roMess) : true;
+						bRet = (_bSaveName()) ? PrIsValidName(Name, roMess) : true;
 					}
 				}
 			}
@@ -174,7 +177,7 @@ namespace CTSWeb.Util
 				bRet = Manager.TryGetFCObject(roContext, ID, oType, out _);           // Name can be different, allow changing the name && oFCObj.Name == Name;
 				if (bRet)
 				{
-					if (_bSaveName) bRet = PrIsValidName(Name, roMess);             // Overkill if name is not changed
+					if (_bSaveName()) bRet = PrIsValidName(Name, roMess);             // Overkill if name is not changed
 				}
 				else
 				{
@@ -201,7 +204,7 @@ namespace CTSWeb.Util
 	{
 		private static readonly ILog _oLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-		private static protected Descs.Field _iSupportedTranslatableFields = Descs.Field.All;
+		private protected virtual Descs.Field _iSupportedTranslatableFields() => Descs.Field.All;
 
 		public Descs[] Descriptions;
 
@@ -261,7 +264,7 @@ namespace CTSWeb.Util
 					if (Descriptions[c].CultureName != oLanguage.Item2) _oLog.Debug($"Invalid culture name: expected '{Descriptions[c].CultureName}' and found '{oLanguage.Item2}'");
 					foreach (var o in Descs.FieldList)
 					{
-						if ( ( ((int)_iSupportedTranslatableFields) & ((int)o.Item1) ) != 0 ) 
+						if ( ( ((int)_iSupportedTranslatableFields()) & ((int)o.Item1) ) != 0 ) 
 						{
 							s = Language.GetFCDesc(roObject, o.Item1, oLanguage.Item1);
 							if (!(s is null)) Descriptions[c].Texts[o.Item2] = s;

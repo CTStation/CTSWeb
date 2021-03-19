@@ -84,15 +84,19 @@ namespace CTSWeb.Util
 
 
 	// A class to build our structure from an FC manager
-	public static class MultiPartID
-    {
-		public static List<NodeDesc> MultipartList<tObject>(
+	public class MultiPartID<tObject> where tObject : ManagedObject, new()
+
+	{
+		public readonly List<string> Dims;
+		public readonly List<NodeDesc> Nodes = new List<NodeDesc>();
+
+		public MultiPartID(
 			  Context roContext
 			, Func<ICtObject, Context, List<ManagedObject>> roGetIdentifierParts
+			, Func<Context, List<string>> roDimDescList
 			, Predicate<ICtObject> roFilter = null
-		) where tObject : ManagedObject, new() 
+		)
 		{
-			List<NodeDesc> oRet = new List<NodeDesc>();
 			List<ManagedObject> oID;
 			List<NamedObjectCollection<NodeDesc>> oIndexes = new List<NamedObjectCollection<NodeDesc>>();
 			NodeDesc oUpperNode;
@@ -105,8 +109,8 @@ namespace CTSWeb.Util
 					if ((roFilter is null) || roFilter(o))
 					{
 						oID = roGetIdentifierParts(o, roContext);
-						// Create indexes on first run
-						if (oIndexes.Count == 0) foreach (ManagedObject oPart in oID) oIndexes.Add(new NamedObjectCollection<NodeDesc>());
+						// Create indexes and dim markers on first run
+						if (oIndexes.Count == 0) foreach (ManagedObject oPart in oID)  oIndexes.Add(new NamedObjectCollection<NodeDesc>()); 
 						Debug.Assert(oIndexes.Count == oID.Count);
 						c = 0;
 						oUpperNode = null;
@@ -126,11 +130,16 @@ namespace CTSWeb.Util
 				}
 			});
 			// Here oIndexes[0] is a dictionary representing the table. Transform it into a collection for better serialization
-			if (0 < oIndexes.Count)				
-					foreach (var o in oIndexes[0])					
-							oRet.Add(o);
-
-			return oRet;
+			if (0 < oIndexes.Count)
+            {
+				foreach (var o in oIndexes[0])
+					Nodes.Add(o);
+				Dims = roDimDescList(roContext);
+			}
+            else
+            {
+				Dims = new List<string>();
+            }
 		}
 	}
 }
