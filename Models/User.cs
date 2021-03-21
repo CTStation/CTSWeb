@@ -56,6 +56,21 @@ namespace CTSWeb.Models
 
             _oFCRefValue = (ICtRecipient)roObject;
         }
+
+
+        public static List<string> GetIDDimensions(Context roContext)
+        {
+            List<string> oRet = new List<string>();
+            string s = "Recipient";
+            if (roContext.Language.Culture.Name == "fr-FR") s = "Site";
+            oRet.Add(s);
+            return oRet;
+        }
+
+
+        public static MultiPartID<Recipient> GetList(Context roContext) =>
+            new MultiPartID<Recipient>(roContext, new Recipient().GetIdentifierParts, GetIDDimensions);
+
     }
 }
 

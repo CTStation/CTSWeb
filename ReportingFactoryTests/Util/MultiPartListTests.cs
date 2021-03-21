@@ -54,6 +54,12 @@ namespace CTSWeb.Util.Tests
                 string s = JsonConvert.SerializeObject(o);
                 Assert.IsTrue(s != "");
                 Debug.WriteLine(s);
+
+                o = Framework.GetPublishedFrameworksWithLevels(oContext);
+                s = JsonConvert.SerializeObject(o);
+                Assert.IsTrue(s != "");
+                Debug.WriteLine(s);
+
             }
         }
 

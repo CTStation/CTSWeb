@@ -102,8 +102,13 @@ namespace CTSWeb.Models
             // Manager.Register<RefTable>((int)ct_core_manager.CT_REFTABLE_MANAGER);
         }
 
+        private Dims _iDimension;
+
         // Argument-less constructor
         public RefValue() { }
+
+        // Constructor with one argument to store Dimension
+        public RefValue(Dims viDimension) { _iDimension = viDimension; }
 
         private ICtRefValue _oFCRefValue;
         public ICtRefValue FCValue() => _oFCRefValue;
@@ -114,10 +119,49 @@ namespace CTSWeb.Models
 
             _oFCRefValue = (ICtRefValue)roObject;
         }
+
+
+        // TODO: integrate dimensions in the Get<> Exists<> pattern
+
+        private static List<string> PrGetDimensionDesc(Context roContext, Dims viDim)
+        {
+            List<string> oRet = new List<string>();
+            int iDim;
+            switch (viDim)
+            {
+                case Dims.Currency:
+                    iDim = (int)CTCOMMONMODULELib.ct_dimension.DIM_CURNCY;
+                    break;
+                case Dims.Entity:
+                    iDim = (int)CTCOMMONMODULELib.ct_dimension.DIM_ENTITY;
+                    break;
+                default:
+                    iDim = (int)CTCOMMONMODULELib.ct_dimension.DIM_PHASE;
+                    break;
+            }
+            oRet.Add(roContext.Get<Dimension>(iDim).LDesc.Trim());
+            return oRet;
+        }
+
+        public List<string> GetIDDimensions(Context roContext) => PrGetDimensionDesc(roContext, _iDimension);
+
+
+        public static MultiPartID<RefValue> GetDim(Context roContext, Dims viDim)
+        {
+            List<List<ManagedObject>> oIds = new List<List<ManagedObject>>();
+            Manager.Execute<RefValue>(roContext, (ICtObjectManager oMgr) =>
+            {
+                foreach (ICtObject o in oMgr.GetObjects(null, ACCESSFLAGS.OM_READ, 0, null))
+                {
+                    ManagedObject oItem = new ManagedObject();
+                    oItem.ReadFrom(o, roContext);
+                    oIds.Add(new List<ManagedObject>() { oItem });
+                }
+            }, viDim);
+            return new MultiPartID<RefValue>(PrGetDimensionDesc(roContext, viDim), oIds);
+        }
+
     }
-
-    // TODO: integrate dimensions in the Get<> Exists<> pattern
-
 
 }
 

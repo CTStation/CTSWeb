@@ -42,20 +42,21 @@ namespace CTSWeb.Util
 	{
 		private Dictionary<string, tObject> _oIndex = new Dictionary<string, tObject>();
 
-		public bool TryGet(string vsName, out tObject roNamed) => _oIndex.TryGetValue(vsName, out roNamed);
+		public bool TryGet(string vsName, out tObject roNamed)		=> _oIndex.TryGetValue(vsName, out roNamed);
+		public void AddIfNew(tObject voNamed)						{ if (!_oIndex.ContainsKey(voNamed.Name)) _oIndex.Add(voNamed.Name, voNamed); }
 
 		// ICollection interface
-		public void Add(tObject voNamed) { _oIndex.Add(voNamed.Name, voNamed); }
-		public void Clear() { _oIndex.Clear(); }
-		public bool Contains(tObject voNamed) => _oIndex.ContainsKey(voNamed.Name);
-		public void CopyTo(tObject[] raoNodes, int viIndex) { throw new NotImplementedException(); }
-		public int Count { get => _oIndex.Count; }
-		public bool IsReadOnly { get => false; }
-		public bool Remove(tObject voNamed) => _oIndex.Remove(voNamed.Name);
-		IEnumerator IEnumerable.GetEnumerator() => _oIndex.Values.GetEnumerator();
-		public IEnumerator<tObject> GetEnumerator() => _oIndex.Values.GetEnumerator();
-		public object SyncRoot { get { throw new NotImplementedException(); } }
-		public bool IsSynchronized { get { throw new NotImplementedException(); } }
+		public void Add(tObject voNamed)							{ _oIndex.Add(voNamed.Name, voNamed); }
+		public void Clear()											{ _oIndex.Clear(); }
+		public bool Contains(tObject voNamed)						=> _oIndex.ContainsKey(voNamed.Name);
+		public void CopyTo(tObject[] raoNodes, int viIndex)			{ throw new NotImplementedException(); }
+		public int Count											{ get => _oIndex.Count; }
+		public bool IsReadOnly										{ get => false; }
+		public bool Remove(tObject voNamed)							=> _oIndex.Remove(voNamed.Name);
+		IEnumerator IEnumerable.GetEnumerator()						=> _oIndex.Values.GetEnumerator();
+		public IEnumerator<tObject> GetEnumerator()					=> _oIndex.Values.GetEnumerator();
+		public object SyncRoot										{ get { throw new NotImplementedException(); } }
+		public bool IsSynchronized									{ get { throw new NotImplementedException(); } }
 	}
 
 
@@ -88,8 +89,11 @@ namespace CTSWeb.Util
 
 	{
 		public readonly List<string> Dims;
-		public readonly List<NodeDesc> Nodes = new List<NodeDesc>();
+		public readonly List<NodeDesc> Nodes;
 
+		public MultiPartID() { }
+
+		// Build from manager
 		public MultiPartID(
 			  Context roContext
 			, Func<ICtObject, Context, List<ManagedObject>> roGetIdentifierParts
@@ -99,9 +103,6 @@ namespace CTSWeb.Util
 		{
 			List<ManagedObject> oID;
 			List<NamedObjectCollection<NodeDesc>> oIndexes = new List<NamedObjectCollection<NodeDesc>>();
-			NodeDesc oUpperNode;
-			NodeDesc oNode;
-			int c;
 			Manager.Execute<tObject>(roContext, (ICtObjectManager roMgr) => {
 				ICtGenCollection oColl = roMgr.GetObjects(null, ACCESSFLAGS.OM_READ, 0, null);
 				foreach (ICtObject o in oColl)
@@ -109,37 +110,71 @@ namespace CTSWeb.Util
 					if ((roFilter is null) || roFilter(o))
 					{
 						oID = roGetIdentifierParts(o, roContext);
-						// Create indexes and dim markers on first run
-						if (oIndexes.Count == 0) foreach (ManagedObject oPart in oID)  oIndexes.Add(new NamedObjectCollection<NodeDesc>()); 
-						Debug.Assert(oIndexes.Count == oID.Count);
-						c = 0;
-						oUpperNode = null;
-						foreach (ManagedObject oPart in oID)
-						{
-							if (!oIndexes[c].TryGet(oPart.Name, out oNode))
-							{
-								oNode = new NodeDesc(oPart);
-								oIndexes[c].Add(oNode);
-							}
-							Debug.Assert(oIndexes[c].Contains(oNode) && oNode.Name == oPart.Name && oPart.Name == oID[c].Name);
-							if (!(oUpperNode is null)) oUpperNode.Add(oNode);
-							oUpperNode = oNode;
-							c++;
-						}
+						PrAddID(oID, oIndexes);
 					}
 				}
 			});
-			// Here oIndexes[0] is a dictionary representing the table. Transform it into a collection for better serialization
-			if (0 < oIndexes.Count)
-            {
-				foreach (var o in oIndexes[0])
-					Nodes.Add(o);
-				Dims = roDimDescList(roContext);
-			}
-            else
-            {
-				Dims = new List<string>();
-            }
+			PrBuildMultipart(roDimDescList(roContext), oIndexes[0], out Dims, out Nodes);
 		}
+
+
+		// Build from list of ids
+		public MultiPartID(List<string> voDimensionNames, List<List<ManagedObject>>	voTable)
+		{
+			List<NamedObjectCollection<NodeDesc>> oIndexes = new List<NamedObjectCollection<NodeDesc>>();
+			foreach (List<ManagedObject> oID in voTable)
+			{
+				PrAddID(oID, oIndexes);
+			}
+			PrBuildMultipart(voDimensionNames, oIndexes[0], out Dims, out Nodes);
+		}
+
+
+		private void PrAddID(List<ManagedObject> voID, List<NamedObjectCollection<NodeDesc>> roIndexes)
+        {
+			NodeDesc oUpperNode;
+			NodeDesc oNode;
+			int c;
+			// Create indexes and dim markers on first run
+			if (roIndexes.Count == 0) foreach (ManagedObject oPart in voID) roIndexes.Add(new NamedObjectCollection<NodeDesc>());
+			Debug.Assert(roIndexes.Count == voID.Count);
+			c = 0;
+			oUpperNode = null;
+			foreach (ManagedObject oPart in voID)
+			{
+				if (!roIndexes[c].TryGet(oPart.Name, out oNode))
+				{
+					oNode = new NodeDesc(oPart);
+					roIndexes[c].Add(oNode);
+					if (!(oUpperNode is null))
+                    {
+						Debug.Assert(0 < c);
+						oUpperNode.Add(oNode);
+                    }
+				}
+				Debug.Assert(roIndexes[c].Contains(oNode) && oNode.Name == oPart.Name && oPart.Name == voID[c].Name);
+				if (c < voID.Count -1)
+				{
+					roIndexes[c + 1].Clear();
+					if (!(oNode.Next is null)) foreach (NodeDesc oCur in oNode.Next) roIndexes[c + 1].AddIfNew(oCur);
+				}
+				oUpperNode = oNode;
+				c++;
+			}
+		}
+
+
+		private void PrBuildMultipart(List<string> voDimensionNames, NamedObjectCollection<NodeDesc> voIndex, out List<string> roDims, out List<NodeDesc> roNodes)
+        {
+			// Here oIndexes[0] is a dictionary representing the table. Transform it into a collection for better serialization
+			roDims = new List<string>();
+			roNodes = new List<NodeDesc>();
+			if (0 < voIndex.Count)
+			{
+				roDims = voDimensionNames;
+				foreach (var o in voIndex)	roNodes.Add(o);
+			}
+		}
+
 	}
 }

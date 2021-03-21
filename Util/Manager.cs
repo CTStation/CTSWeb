@@ -432,18 +432,28 @@ namespace CTSWeb.Util
 		}
 
 		// Has to add the Type argument for TryGetFCObject
-		private static ICtObjectManager PrGetMgr<tObject>(Context roContext, Type voT = null) where tObject : ManagedObject, new()
+		private static ICtObjectManager PrGetMgr<tObject>(Context roContext, Type voT = null, Dims viDim = 0) where tObject : ManagedObject, new()
 		{
-			ICtProviderContainer oContainer = (ICtProviderContainer)roContext.Config.Session;
-			Type oType = (voT is null) ? typeof(tObject) : voT;
-			if (!_oType2MgrID.TryGetValue(oType, out int iMgrID))
-			{
-				// Maybe the class wasn't initialized. So try creating an object to ensure class init
-				// This won't work in TryGetFCObject, but hopefully it should not happen at that time
-				tObject oDummy = new tObject();
-				if (!_oType2MgrID.TryGetValue(oType, out iMgrID)) throw new ArgumentException($"Unregistered FC type '{typeof(tObject).Name}'");
-			}
 			ICtObjectManager oManager = null;
+			int iMgrID;
+			ICtProviderContainer oContainer = (ICtProviderContainer)roContext.Config.Session;
+			if (viDim == 0)
+            {
+				Type oType = (voT is null) ? typeof(tObject) : voT;
+				if (!_oType2MgrID.TryGetValue(oType, out iMgrID))
+				{
+					// Maybe the class wasn't initialized. So try creating an object to ensure class init
+					// This won't work in TryGetFCObject, but hopefully it should not happen at that time
+					tObject oDummy = new tObject();
+					if (!_oType2MgrID.TryGetValue(oType, out iMgrID)) throw new ArgumentException($"Unregistered FC type '{typeof(tObject).Name}'");
+				}
+            }
+            else
+            {
+				if (!_oCode2DimAccess.TryGetValue(viDim, out PrDimensionAccess oDimensionAccess)) throw new ArgumentException($"Unknown dimension '{viDim}'");
+				if (!oDimensionAccess.HasRefTable) throw new ArgumentException($"Dimension without a reference table: '{Enum.GetName(typeof(Dims), viDim)}'");
+				iMgrID = oDimensionAccess.RefTableManagerID;
+			}
 			COMMonitor(roContext, () => oManager = (ICtObjectManager)oContainer.get_Provider(1, iMgrID));
 			return oManager;
 		}
@@ -667,9 +677,9 @@ namespace CTSWeb.Util
 
 		// Helper function for EntityRep, that needs 3 arguments to find an object
 		// Runs any function against a manager in a protected way
-		public static void Execute<tObject>(Context roContext, Action<ICtObjectManager> voAction) where tObject : ManagedObject, new()
+		public static void Execute<tObject>(Context roContext, Action<ICtObjectManager> voAction, Dims viDim = 0) where tObject : ManagedObject, new()
 		{
-			ICtObjectManager o = PrGetMgr<tObject>(roContext);
+			ICtObjectManager o = PrGetMgr<tObject>(roContext, null, viDim);
 			COMMonitor(roContext, () => { voAction(o); } );
         }
 

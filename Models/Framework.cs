@@ -77,6 +77,8 @@ namespace CTSWeb.Models
         // Multi part 		
         public override List<ManagedObject> GetIdentifierParts(ICtObject roFCObject, Context roContext)
 		{
+            Framework oFrame = new Framework();
+            oFrame.ReadFrom(roFCObject, roContext);
             IRefObjRef o = (IRefObjRef)roFCObject;
             return new List<ManagedObject>() { (ManagedObject)new RefValueLight(o.Phase, roContext), (ManagedObject)new RefValueLight(o.Version, roContext) };
         }
@@ -93,6 +95,45 @@ namespace CTSWeb.Models
         public static MultiPartID<Framework> GetPublishedFrameworks(Context roContext) =>
             new MultiPartID<Framework>(roContext, new Framework().GetIdentifierParts, Framework.GetIDDimensions,
                                                                     (ICtObject oFramework) => ((IRefObjRef)oFramework).RefStatus == kref_framework_status.FRMK_STATUS_PUBLISHED);
+
+
+        public static MultiPartID<Framework> GetPublishedFrameworksWithLevels(Context roContext)
+        {
+            List<string> oDims = new List<string>();
+            oDims = GetIDDimensions(roContext);
+            string s;
+            s = "Set of controls";
+            if (roContext.Language.Culture.Name == "fr-FR") s = "Jeu de contrôles";
+            oDims.Add(s);
+            s = "Level of control";
+            if (roContext.Language.Culture.Name == "fr-FR") s = "Niveau de contrôle";
+            oDims.Add(s);
+
+            List<List<ManagedObject>> oIdList = new List<List<ManagedObject>>();
+            foreach (Framework oFrame in roContext.GetAll<Framework>())
+            {
+                if (oFrame.Status == kref_framework_status.FRMK_STATUS_PUBLISHED) 
+                {
+                    ManagedObject oPhase = new RefValue();
+                    oPhase.ReadFrom(oFrame._oFC.Phase, roContext);
+                    ManagedObject oVersion = new RefValue();
+                    oVersion.ReadFrom(oFrame._oFC.Version, roContext);
+                    foreach (ControlSet oCtrlSet in oFrame.ControlSets.Values)
+                    {
+                        foreach (ControlLevel oCtrlLevel in oCtrlSet.ControlLevels())
+                        {
+                            oIdList.Add(new List<ManagedObject>() { oPhase, oVersion, oCtrlSet, oCtrlLevel });
+                        }
+                    }
+                }
+            }
+            
+            return new MultiPartID<Framework>(oDims, oIdList);
+        }
+
+
+
+
 
 
         public ControlLevel GetControlLevel(short? viRank)
@@ -167,6 +208,11 @@ namespace CTSWeb.Models
 
         public IRefControlSet FCValue() => _oFC;
 
+
+        private List<ControlLevel> _oLevels = new List<ControlLevel>();
+
+        public List<ControlLevel> ControlLevels() => _oLevels;
+
         // public List<FCControl> Controls;
         //List<ControlsSets> ControlSets;
         //public List<ControlSubSets> ControlSubSets;
@@ -177,27 +223,35 @@ namespace CTSWeb.Models
             base.ReadFrom(roObject, roContext);
 
             _oFC = (IRefControlSet)roObject;
-            //foreach (IRefCtrlFamily refObjRef in obj.Content)
-            //{
 
-            //    switch (refObjRef.Type)
-            //    {
-            //        case -524234: // controlset
-            //            //ControlSets.Add(new ControlsSets((IRefControlSet)refObjRef));
-
-            //            break;
-
-            //        case -524221: // subset
-            //            ControlSubSets.Add(new ControlSubSets((IRefCtrlFamily)refObjRef));
-            //            break;
-            //        default:
-            //            Controls.Add(new FCControl((IRefControl)refObjRef));
-            //            break;
-
-            //    }
-
-            //}
+            Dictionary<short, IRefLevel> oLevels = new Dictionary<short, IRefLevel>();
+            PrAddControlLevels(oLevels, roObject, roContext);
+            foreach (IRefLevel o in oLevels.Values)
+            {
+                ControlLevel oCtrlLevel = new ControlLevel();
+                oCtrlLevel.ReadFrom(o, roContext);
+                _oLevels.Add(oCtrlLevel);
+            }
         }
+
+        private void PrAddControlLevels(Dictionary<short, IRefLevel> roDic, ICtObject oSet, Context roContext)
+        {
+            switch (oSet.Type)
+            {
+                case -524234:   // controlset
+                    foreach (ICtObject o in ((IRefControlSet)oSet).Content)     PrAddControlLevels(roDic, o, roContext);
+                    break;
+                case -524221:   // subset
+                    foreach (ICtObject o in ((IRefCtrlFamily)oSet).Content)     PrAddControlLevels(roDic, o, roContext);
+                    break;
+                default:        // Control
+                    IRefLevel oLevel = ((IRefControlBase)oSet).Level;
+                    short iRank = oLevel.Rank;
+                    if (!roDic.ContainsKey(iRank))                           roDic.Add(iRank, oLevel);
+                    break;
+            }
+        }
+
     }
 
     public class ControlSubSets

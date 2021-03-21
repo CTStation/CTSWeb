@@ -172,16 +172,22 @@ namespace CTSWeb.Controllers
                 switch (id)
                 {
                     case "PublishedFramework":
-                        o = Framework.GetPublishedFrameworks(oContext); 
+                        o = Framework.GetPublishedFrameworksWithLevels(oContext); 
                         break;
-                    case "Dim_Entity":
-                        o = oContext.GetRefValues(Dims.Entity);
+                    case "Entity":
+                        o = RefValue.GetDim(oContext, Dims.Entity);
                         break;
-                   /* case "Recipient":
-                        o = oContext.GetAll<Recipient>();
-                        break; */
+                    case "Currency":
+                        o = RefValue.GetDim(oContext, Dims.Currency);
+                        break;
+                    case "Recipient":
+                         o = Recipient.GetList(oContext);
+                         break;
+                    case "Conso":
+                    case "SetOfRules":
+                    case "Lock":
                     case "Folder":
-                        o = oContext.GetAll<Folder>();
+                        o = Folder.GetList(oContext);
                         break;
                     default:
                         break;

@@ -42,10 +42,24 @@ namespace CTSWeb.Models
 
             if (!(roObject is null))
             {
-                ICtBookFolder oFC = (ICtBookFolder)roObject;
+                ICtBookFolder oFC = ((ICtBookFolder)roObject);
                 _oFC = oFC;
             }
         }
+
+
+        public static List<string> GetIDDimensions(Context roContext)
+        {
+            List<string> oRet = new List<string>();
+            string s = "Folder";
+            if (roContext.Language.Culture.Name == "fr-FR") s = "Dossier";
+            oRet.Add(s);
+            return oRet;
+        }
+
+
+        public static MultiPartID<Folder> GetList(Context roContext) =>
+            new MultiPartID<Folder>(roContext, new Folder().GetIdentifierParts, GetIDDimensions);
     }
 }
 
