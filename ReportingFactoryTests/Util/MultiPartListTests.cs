@@ -60,6 +60,15 @@ namespace CTSWeb.Util.Tests
                 Assert.IsTrue(s != "");
                 Debug.WriteLine(s);
 
+                o = RefValue.GetDim(oContext, Dims.Entity);
+                s = JsonConvert.SerializeObject(o);
+                Assert.IsTrue(s != "");
+                Debug.WriteLine(s);
+
+                o = Conso.GetList(oContext);
+                s = JsonConvert.SerializeObject(o);
+                Assert.IsTrue(s != "");
+                Debug.WriteLine(s);
             }
         }
 

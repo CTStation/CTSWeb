@@ -88,8 +88,10 @@ namespace CTSWeb.Util
 	public class MultiPartID<tObject> where tObject : ManagedObject, new()
 
 	{
-		public readonly List<string> Dims;
-		public readonly List<NodeDesc> Nodes;
+		// Readonly is a nuisance for Lock, but much cleaner if checks are made
+		// TODO Add constructors and checks on arguments
+		public List<string> Dims;
+		public List<NodeDesc> Nodes;
 
 		public MultiPartID() { }
 
@@ -119,7 +121,7 @@ namespace CTSWeb.Util
 
 
 		// Build from list of ids
-		public MultiPartID(List<string> voDimensionNames, List<List<ManagedObject>>	voTable)
+		public MultiPartID(List<string> voDimensionNames, List<List<ManagedObject>> voTable)
 		{
 			List<NamedObjectCollection<NodeDesc>> oIndexes = new List<NamedObjectCollection<NodeDesc>>();
 			foreach (List<ManagedObject> oID in voTable)
@@ -131,7 +133,7 @@ namespace CTSWeb.Util
 
 
 		private void PrAddID(List<ManagedObject> voID, List<NamedObjectCollection<NodeDesc>> roIndexes)
-        {
+		{
 			NodeDesc oUpperNode;
 			NodeDesc oNode;
 			int c;
@@ -147,13 +149,13 @@ namespace CTSWeb.Util
 					oNode = new NodeDesc(oPart);
 					roIndexes[c].Add(oNode);
 					if (!(oUpperNode is null))
-                    {
+					{
 						Debug.Assert(0 < c);
 						oUpperNode.Add(oNode);
-                    }
+					}
 				}
 				Debug.Assert(roIndexes[c].Contains(oNode) && oNode.Name == oPart.Name && oPart.Name == voID[c].Name);
-				if (c < voID.Count -1)
+				if (c < voID.Count - 1)
 				{
 					roIndexes[c + 1].Clear();
 					if (!(oNode.Next is null)) foreach (NodeDesc oCur in oNode.Next) roIndexes[c + 1].AddIfNew(oCur);
@@ -165,14 +167,31 @@ namespace CTSWeb.Util
 
 
 		private void PrBuildMultipart(List<string> voDimensionNames, NamedObjectCollection<NodeDesc> voIndex, out List<string> roDims, out List<NodeDesc> roNodes)
-        {
-			// Here oIndexes[0] is a dictionary representing the table. Transform it into a collection for better serialization
+		{
+			// Here oIndexes[0] is a dictionary representing the table. Transform it into a sorted collection for better serialization
 			roDims = new List<string>();
 			roNodes = new List<NodeDesc>();
 			if (0 < voIndex.Count)
 			{
 				roDims = voDimensionNames;
-				foreach (var o in voIndex)	roNodes.Add(o);
+				roNodes = PrSort(voIndex, roDims.Count);
+			}
+
+			List<NodeDesc> PrSort(ICollection<NodeDesc> roColl, int viLevel)
+			{
+				if (1 < viLevel)
+                {
+					foreach (NodeDesc o in roColl) o.Next = PrSort(o.Next, viLevel - 1);
+                }
+				SortedDictionary<string, NodeDesc> oIndex = new SortedDictionary<string, NodeDesc>();
+				foreach (NodeDesc o in roColl)
+				{
+					if (viLevel <= 1) o.Next = new List<NodeDesc>();			// Empty collection rather than null to simplify serialisation
+					oIndex.Add(o.Name, o);	
+				}
+				List<NodeDesc> oRet = new List<NodeDesc>();
+				foreach (KeyValuePair<string, NodeDesc> o in oIndex) oRet.Add(o.Value);
+				return oRet;
 			}
 		}
 

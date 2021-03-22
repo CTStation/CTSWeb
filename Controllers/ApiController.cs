@@ -184,8 +184,12 @@ namespace CTSWeb.Controllers
                          o = Recipient.GetList(oContext);
                          break;
                     case "Conso":
+                        o = Conso.GetList(oContext);
+                        break;
                     case "SetOfRules":
                     case "Lock":
+                        o = CTSWeb.Models.Reporting.GetLockList(oContext);
+                        break;
                     case "Folder":
                         o = Folder.GetList(oContext);
                         break;

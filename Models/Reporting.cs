@@ -295,6 +295,21 @@ namespace CTSWeb.Models
             }
             return oRet;
         }
+
+
+        public static MultiPartID<Reporting> GetLockList(Context roContext) 
+        {
+            MultiPartID<Reporting> oRet = new MultiPartID<Reporting>();
+            string s = "Lock on publication";
+            if (roContext.Culture.Name == "fr-FR") s = "Verrouillage à la publication";
+            oRet.Dims = new List<string>() { s };
+            oRet.Nodes = new List<NodeDesc>();
+            ManagedObject o = new ManagedObject();
+            o.Name = "0"; o.LDesc = (roContext.Culture.Name == "fr-FR") ? "Aucun" : "None";                                     oRet.Nodes.Add(new NodeDesc(o) { Next = new List<NodeDesc>() });
+            o.Name = "1"; o.LDesc = (roContext.Culture.Name == "fr-FR") ? "Complet" : "Total";                                  oRet.Nodes.Add(new NodeDesc(o) { Next = new List<NodeDesc>() });
+            o.Name = "2"; o.LDesc = (roContext.Culture.Name == "fr-FR") ? "Tous sauf les écritures" : "All except adjustments"; oRet.Nodes.Add(new NodeDesc(o) { Next = new List<NodeDesc>() });
+            return oRet;
+        }
     }
 
 
@@ -647,7 +662,7 @@ namespace CTSWeb.Models
         {
             bool bRet = true;
 
-            if (bRet) bRet = (!(PackPublishingCutOffDate == default)) && (voStart <= PackPublishingCutOffDate) && (PackPublishingCutOffDate <= voEnd);
+            if (bRet) bRet = UseDefaultPublish || ( (!(PackPublishingCutOffDate == default)) && (voStart <= PackPublishingCutOffDate) && (PackPublishingCutOffDate <= voEnd) );
             if (!bRet) { if (voEntity is null) roMess.Add("RF0511"); else roMess.Add("RF0512", voEntity); }
             if (bRet) bRet = (AfterPublication.Level is null || AfterPublication.Level == 0) ^ (AfterPublication.Advanced);
             if (!bRet) { if (voEntity is null) roMess.Add("RF0513"); else roMess.Add("RF0515", voEntity); }

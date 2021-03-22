@@ -67,6 +67,10 @@
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtCommonModuleLib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
+    <Reference Include="Interop.CtConsoLib">
+      <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtConsoLib.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
     <Reference Include="Interop.CtCoreErrLib">
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtCoreErrLib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
@@ -85,6 +89,14 @@
     </Reference>
     <Reference Include="Interop.CtReportingModuleLib">
       <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtReportingModuleLib.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Interop.CtRuleObjLib">
+      <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtRuleObjLib.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Interop.CtScopeLib">
+      <HintPath>E:\Program Files (x86)\SAP\Financial Consolidation\Interop.CtScopeLib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="Interop.CtTransferLib">
@@ -159,6 +171,7 @@
     <Compile Include="App_Start\BundleConfig.cs" />
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
+    <Compile Include="Models\Conso.cs" />
     <Compile Include="Models\Framework.cs" />
     <Compile Include="Models\Dimension.cs" />
     <Compile Include="Models\User.cs" />
