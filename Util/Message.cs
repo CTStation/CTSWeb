@@ -139,8 +139,8 @@ namespace CTSWeb.Util
         public string Code;
         public MessageSeverity Severity;
         public string Description;
-        public int SourceRow;
-        public int SourceCol;
+        public int Row;
+        public int Col;
     }
 
     // Reads the setup in one language

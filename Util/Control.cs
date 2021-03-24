@@ -150,8 +150,8 @@ namespace CTSWeb.Util
                             {
                                 // bRet is kept to true
                                 oMessage = roMess.Add("RF0212", s, ColName);
-                                oMessage.SourceRow = c + 1;
-                                oMessage.SourceCol = iCol + 1;
+                                oMessage.Row = c + 1;
+                                oMessage.Col = iCol + 1;
                                 if (bStoreInvalidRows) roInvalidRows.Add(c);
                             }
                         }
