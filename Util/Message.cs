@@ -138,7 +138,7 @@ namespace CTSWeb.Util
     {
         public string Code;
         public MessageSeverity Severity;
-        public string Description;
+        public string Text;
         public int Row;
         public int Col;
     }
@@ -188,16 +188,16 @@ namespace CTSWeb.Util
             {
                 Code = vsCode,
                 Severity = oSetupItem.Item1,
-                Description = oSetupItem.Item2   // Unformatted description
+                Text = oSetupItem.Item2   // Unformatted description
             };
             Messages.Add(oRet);
             return oRet;
         }
 
         public Message Add(string vsCode) => PrAdd(vsCode);
-        public Message Add(string vsCode, object vo1)                          { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vo1); return o; }
-        public Message Add(string vsCode, object vo1, object vo2)              { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vo1, vo2); return o; }
-        public Message Add(string vsCode, object vo1, object vo2, object vo3)  { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vo1, vo2, vo3); return o; }
-        public Message Add(string vsCode, object[] vao)                        { Message o = PrAdd(vsCode); o.Description = string.Format(_oCulture, o.Description, vao); return o; }
+        public Message Add(string vsCode, object vo1)                          { Message o = PrAdd(vsCode); o.Text = string.Format(_oCulture, o.Text, vo1); return o; }
+        public Message Add(string vsCode, object vo1, object vo2)              { Message o = PrAdd(vsCode); o.Text = string.Format(_oCulture, o.Text, vo1, vo2); return o; }
+        public Message Add(string vsCode, object vo1, object vo2, object vo3)  { Message o = PrAdd(vsCode); o.Text = string.Format(_oCulture, o.Text, vo1, vo2, vo3); return o; }
+        public Message Add(string vsCode, object[] vao)                        { Message o = PrAdd(vsCode); o.Text = string.Format(_oCulture, o.Text, vao); return o; }
     }
 }
