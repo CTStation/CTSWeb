@@ -112,7 +112,6 @@ namespace CTSWeb.Controllers
                         oContext.Save<EntityReporting>(oEntRep, oMessages);
                     }
                 }
-                //return new CTS_JsonResult(null, oMessages);
                 return new CTS_JsonResult(oReportings, oMessages);
             }
         }
@@ -127,6 +126,8 @@ namespace CTSWeb.Controllers
         }
         );
 
+
+        // TODO delete this
         public ActionResult Users() => PrSafeResult(() =>
         {
             using (Context oContext = new Context(this.HttpContext))
@@ -137,6 +138,7 @@ namespace CTSWeb.Controllers
         );
 
 
+        // TODO delete this
         public ActionResult RefTables() => PrSafeResult(() =>
         {
             using (Context oContext = new Context(this.HttpContext))
@@ -147,7 +149,7 @@ namespace CTSWeb.Controllers
         );
 
 
-
+        // TODO delete this
         public ActionResult TestTable() => PrSafeResult(() =>
         {
             return new CTS_JsonResult(Serialiser.CreateTable());
@@ -187,6 +189,7 @@ namespace CTSWeb.Controllers
                         o = Conso.GetList(oContext);
                         break;
                     case "SetOfRules":
+                        // TODO
                     case "Lock":
                         o = CTSWeb.Models.Reporting.GetLockList(oContext);
                         break;
