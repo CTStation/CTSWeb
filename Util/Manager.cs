@@ -104,12 +104,15 @@ namespace CTSWeb.Util
 
 			if (!(roObject is null))
 			{
-				ID = roObject.ID;
-				Name = roObject.Name;
-				if (_bReadDesc()) LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roContext.Language.WorkingLanguage);
+				Manager.COMMonitor(roContext, () => {
+					ID = roObject.ID;
+					Name = roObject.Name;
+					if (_bReadDesc()) LDesc = roObject.get_Desc(ct_desctype.ctdesc_long, roContext.Language.WorkingLanguage);
+				});
 				_oLog.Debug($"Loaded managed object {Name}");
 			}
 		}
+
 
 
 		public virtual void WriteInto(ICtObject roObject, MessageList roMess, Context roContext)
@@ -117,10 +120,26 @@ namespace CTSWeb.Util
 			bool bTest = !(roMess is null);
 
 			// Never change object ID 
-			if (_bSaveName() && (!(Name is null)))
+			if (_bSaveName())
 			{
-				if (bTest && !(roObject.Name is null) && roObject.Name != Name) roMess.Add("RF0310", "Name", Name, roObject.Name);
-				roObject.Name = Name;
+				if (!(Name is null))
+				{
+					Manager.COMMonitor(roContext, () => {
+						if ((roObject.Name is null) || (roObject.Name != Name))
+                        {
+							if (bTest && (!(roObject.Name is null))) roMess.Add("RF0310", "Name", Name, roObject.Name);
+							roObject.Name = Name;
+						}
+					});
+                }
+                else
+                {
+					_oLog.Debug("Name should be saved but is null");
+				}
+			}
+            else
+            {
+				_oLog.Debug($"Name should not be saved for object {Name}");
 			}
 			// Changing the desc will be done with other descriptions
 		}
@@ -256,23 +275,25 @@ namespace CTSWeb.Util
 
 			string s;
 			int c = 0;
-			foreach ((lang_t, string) oLanguage in roContext.Language.SupportedLanguages)
-			{
-				Descriptions[c] = new Descs(oLanguage.Item1, roContext.Language);
-				if (!(roObject is null))
+			Manager.COMMonitor(roContext, () => {
+				foreach ((lang_t, string) oLanguage in roContext.Language.SupportedLanguages)
 				{
-					if (Descriptions[c].CultureName != oLanguage.Item2) _oLog.Debug($"Invalid culture name: expected '{Descriptions[c].CultureName}' and found '{oLanguage.Item2}'");
-					foreach (var o in Descs.FieldList)
+					Descriptions[c] = new Descs(oLanguage.Item1, roContext.Language);
+					if (!(roObject is null))
 					{
-						if ( ( ((int)_iSupportedTranslatableFields()) & ((int)o.Item1) ) != 0 ) 
+						if (Descriptions[c].CultureName != oLanguage.Item2) _oLog.Debug($"Invalid culture name: expected '{Descriptions[c].CultureName}' and found '{oLanguage.Item2}'");
+						foreach (var o in Descs.FieldList)
 						{
-							s = Language.GetFCDesc(roObject, o.Item1, oLanguage.Item1);
-							if (!(s is null)) Descriptions[c].Texts[o.Item2] = s;
+							if ((((int)_iSupportedTranslatableFields()) & ((int)o.Item1)) != 0)
+							{
+								s = Language.GetFCDesc(roObject, o.Item1, oLanguage.Item1);
+								if (!(s is null)) Descriptions[c].Texts[o.Item2] = s;
+							}
 						}
 					}
+					c++;
 				}
-				c++;
-			}
+			});
 			_oLog.Debug((roObject is null) ? $"Null BFC object loaded into managed object with desc {Name}" : $"Loaded descriptions in {c} language(s) into managed object with desc {Name}");
 		}
 
@@ -284,22 +305,24 @@ namespace CTSWeb.Util
 			string sOld;
 			string sNew;
 
-			foreach (Descs oText in Descriptions)
-			{
-				if (roContext.Language.TryGetLanguageID(oText.CultureName, out lang_t iLang))
+			Manager.COMMonitor(roContext, () => {
+				foreach (Descs oText in Descriptions)
 				{
-					foreach (var o in Descs.FieldList)
+					if (roContext.Language.TryGetLanguageID(oText.CultureName, out lang_t iLang))
 					{
-						if (oText.Texts.ContainsKey(o.Item2))
+						foreach (var o in Descs.FieldList)
 						{
-							sOld = Language.GetFCDesc(roObject, o.Item1, iLang);
-							sNew = oText.Texts[o.Item2];
-							if (bTest && (!(sNew is null)) && (sOld != sNew)) roMess.Add("RF0310", o.Item2 + oText.CultureName, sNew, sOld);
-							if (!(sNew is null)) Language.SetFCDesc(roObject, o.Item1, iLang, sNew);
+							if (oText.Texts.ContainsKey(o.Item2))
+							{
+								sOld = Language.GetFCDesc(roObject, o.Item1, iLang);
+								sNew = oText.Texts[o.Item2];
+								if (bTest && (!(sNew is null)) && (sOld != sNew)) roMess.Add("RF0310", o.Item2 + oText.CultureName, sNew, sOld);
+								if (!(sNew is null)) Language.SetFCDesc(roObject, o.Item1, iLang, sNew);
+							}
 						}
-					}
-				} // No else: if language isn't found or active, ignore
-			}
+					} // No else: if language isn't found or active, ignore
+				}
+			});
 		}
 	}
 
@@ -319,7 +342,7 @@ namespace CTSWeb.Util
 		{
 			base.ReadFrom(roObject, roContext);
 
-			if (!(roObject is null))
+			if (!(roObject is null)) Manager.COMMonitor(roContext, () => 
 			{
 				ICtStatObject oObj = (ICtStatObject)roObject;
 				OwnerSite = oObj.OwnerSite;
@@ -329,7 +352,7 @@ namespace CTSWeb.Util
 				UpdateDate = oObj.UpdateDate;
 				UpdateAuthor = oObj.UpdateAuthor;
 				_oLog.Debug($"Loaded managed object with security {Name}");
-			}
+			});
 		}
 
 		public override void WriteInto(ICtObject roObject, MessageList roMess, Context roContext)
@@ -423,7 +446,7 @@ namespace CTSWeb.Util
 			{
 				voAction();
 			}
-			catch (System.Runtime.InteropServices.COMException e)
+			catch (Exception e) // Not needed as exception is re thrown when ((e is System.Runtime.InteropServices.COMException) || (e is System.Runtime.InteropServices.SEHException))
 			{
 				roContext.HasFailedRquests = true;
 				_oLog.Debug($"Failed request {e}");
